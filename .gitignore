@@ -1,0 +1,7 @@
+# Ignore everything
+*
+
+# Except source directories
+!.gitignore
+!/local_src/driver-gamepad-1.0/
+!local_src/*
