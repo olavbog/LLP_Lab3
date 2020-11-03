@@ -1,0 +1,31 @@
+# vim: set fdm=marker fdl=1:
+{{{ 2020-10-27T15:39:26+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist clean game
+
+}}} 2020-10-27T15:39:26+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist clean game; (exit value: 1)
+
+
+
+{{{ 2020-10-27T15:39:26+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist compile game
+
+}}} 2020-10-27T15:39:26+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist compile game; (exit value: 1)
+
+
+
+{{{ 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall game
+
+}}} 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall game; (exit value: 1)
+
+
+
+{{{ 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist image root.romfs
+
+}}} 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist image root.romfs; (exit value: 1)
+
+
+
+{{{ 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist test flash-rootfs
+
+}}} 2020-10-27T15:39:27+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist test flash-rootfs; (exit value: 1)
+
+
+

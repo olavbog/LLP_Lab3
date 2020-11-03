@@ -5,6 +5,9 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/ioport.h>
+
+#include "efm32gg.h"
 
 /*
  * template_init - function to insert this module into kernel space
@@ -18,6 +21,10 @@
 static int __init template_init(void)
 {
 	printk("Hello World, here is your module speaking\n");
+	int a = check_region(GPIO_PC_BASE, 16);
+	printk(KERN_INFO "Check_region returned: %i \n", a);
+
+
 	return 0;
 }
 
