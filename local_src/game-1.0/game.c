@@ -8,6 +8,7 @@
 #include <unistd.h> 
 #include <math.h>
 
+
 #include "function_def.h"
 
 int fbfd;
@@ -30,6 +31,21 @@ int main(int argc, char *argv[])
 	rect.height = 240;
 
 
+	printf("Driver test \n");
+
+	int gpio = open("/dev/button_driver", O_RDWR);
+	if(gpio != NULL)
+	{
+		printf(gpio);
+		// gpio_p = mmap(NULL, 12, PROT_READ|PROT_WRITE,MAP_SHARED,GPIO, 0);
+		uint8_t *buffer;
+
+		read(gpio, buffer, 1);
+		printf("\nGPIO read = ");
+		printf(*buffer);
+		printf("\n");
+	}
+
 	printf("Initializing game......\n");
 
 	fbp = mmap(NULL,rect.width*rect.height*2,PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
@@ -38,7 +54,7 @@ int main(int argc, char *argv[])
 
 
 
-	printf("fbp worked well. Starting for loop");
+	printf("fbp worked well. Starting for loop\n");
 	for(int i = 0; i < rect.width*rect.height*2; i++){
 		fbp[i]=0x0DB7;
 	}
@@ -55,7 +71,8 @@ int main(int argc, char *argv[])
 	printf("Exiting");
 
 	exit(EXIT_SUCCESS);
-	return EXIT_SUCCESS;
+	exit(0);
+	return 0;
 }
 
 void draw_rect(int x, int y, int width, int height){

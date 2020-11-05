@@ -4,24 +4,29 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
-
-#include <linux/version.h>
-#include <linux/types.h>
-#include <linux/kdev_t.h>
+#include <linux/init.h>
 #include <linux/fs.h>
-#include <linux/device.h>
+#include <linux/ioport.h>
 #include <linux/cdev.h>
+#include <linux/device.h>
+#include <linux/moduleparam.h>
+#include <linux/kdev_t.h>
+#include <linux/ioport.h>
+#include <asm/io.h>
+#include <asm/uaccess.h>
+#include <asm/signal.h>
+#include <asm/siginfo.h>
+#include <linux/interrupt.h>
 
 #include "efm32gg.h"
 
 #define GPIO_SIZE 0x24 // number of bytes in a GPIO bank
 
-static void __iomem *vgpio_pc;
+// static void __iomem *vgpio_pc;
 static dev_t dev_num;
 static struct cdev c_dev;
 static struct class *cl;
 
-static int status = 1, dignity  = 3, ego = 5;
 
 
 /*
@@ -29,13 +34,13 @@ User program opens the driver
 When the file is opened, initialize registers.
 */
 static int gpio_open(struct inode *inode, struct file *filp){
-	printk(KERN_INFO "GPIO_OPEN Woooo");
+	printk(KERN_INFO "GPIO_OPEN Woooo\n");
 	return 0;
 }
 
 // User program closes the driver
 static int gpio_release(struct inode *inode, struct file *filp){
-	printk(KERN_INFO "GPIO_Close Woo? wait yes, maybe no");
+	printk(KERN_INFO "GPIO_Close Woo? wait yes, maybe no\n");
 	return 0;
 }
 
@@ -47,44 +52,18 @@ use static variable as buffer
 e.g static char c;
 */
 static ssize_t gpio_read(struct file *filp, char __user *buff, size_t len, loff_t *offp){
-	printk(KERN_INFO "Read me baby");
-	uint32_t data = ioread32(vgpio_pc+0x1c);
-	copy_to_user(vuff,&data,1);
-	return count; // return number of bytes read
+	printk(KERN_INFO "I was read\n");
+	uint8_t data = ioread8(GPIO_PC_DIN);
+	printk(KERN_INFO "These values were read - %d", data);
+	copy_to_user(buff,&data,1);
+	return len; // return number of bytes read
 }
 
 // User program writes to the driver
-static ssize_t gpio_write(struct file *filp, cont char __user *buff, size_t len, loff_t *offp){
-	printk(KERN_INFO "Write me a book, or go away. Also these are buttons, wtf do you want?");
-	return count; //return the number of bytes written. Standard write response
+static ssize_t gpio_write(struct file *filp, const char __user *buff, size_t len, loff_t *offp){
+	printk(KERN_INFO "I was written to");
+	return len; //return the number of bytes written. Standard write response
 } 
-static int gpio_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
-{
-	query_arg_t q;
-
-	switch(cmd)
-	{
-		case QUERY_GET_VARIABLES:
-			q.status = status;
-			q.dignity = dignity;
-			q.ego = ego;
-
-			if(copy_to_user((query_arg_t *)arg, &q, sizeof(query_arg_t)))
-			{
-				return -EACCES;
-			}
-			break;
-		case QUERY_CLR_VARIABLES:
-			status = 0;
-			dignity = 0;
-			ego = 0;
-			break;
-		default:
-			return -EINVAL;
-	}
-	return 0;
-}
-
 
 
 struct file_operations gpio_fops = {
@@ -92,8 +71,7 @@ struct file_operations gpio_fops = {
 	.open    = gpio_open,
 	.release = gpio_release, 
 	.read    = gpio_read,
-	.write   = gpio_write,
-	
+	.write   = gpio_write,	
 };
 
 
@@ -107,7 +85,7 @@ struct file_operations gpio_fops = {
  * Returns 0 if successfull, otherwise -1
  */
 
-static int __init template_init(void)
+static int __init gpio_init(void)
 {
 
 	/* Use kmalloc(size_t size, int flags);
@@ -116,40 +94,41 @@ static int __init template_init(void)
 	int ret;
 	struct device *dev_ret;
 
+	resource_size_t byte_size = 1;
 
 	printk(KERN_INFO "Initializing driver");
 	if((ret = alloc_chrdev_region(&dev_num, 0, 1, "GPIO_driver")<0))
 	{
-		printk(KERN_ALERT "Failed to allocate deivce")
+		printk(KERN_ALERT "Failed to allocate deivce");
 		return ret;
 	}
 	printk(KERN_INFO "<Major, Minor>: <%d, %d> \n", MAJOR(dev_num),MINOR(dev_num));
 
 	// Requesting the memory regions we will write and read from
-	if(request_mem_region(GPIO_PC_MODEL, 1, "GPIO_PC") == NULL)
+	if(request_mem_region(GPIO_PC_MODEL, byte_size, "GPIO_PC") == NULL)
 	{
-		printk(KERN_ALERT "ERROR requesting MODEL\n")
+		printk(KERN_ALERT "ERROR requesting MODEL\n");
 		return -1;
 	}
 	if(request_mem_region(GPIO_PC_DOUT, 1, "GPIO_PC") == NULL)
 	{
-		printk(KERN_ALERT "ERROR requesting MODEL\n")
+		printk(KERN_ALERT "ERROR requesting DOUT\n");
 		return -1;
 	}
 	if(request_mem_region(GPIO_PC_DIN, 1, "GPIO_PC") == NULL)
 	{
-		printk(KERN_ALERT "ERROR requesting MODEL\n")
+		printk(KERN_ALERT "ERROR requesting DIN\n");
 		return -1;
 	}
 
 
-	if((vgpio_pc = ioremap_nocache(GPIO_PC_BASE, GPIO_SIZE))== NULL){
-			printk(KERN_ERR "Mapping of GPIO failed\n");
-			return -ENOMEM;
-	}
+	// if((vgpio_pc = ioremap_nocache(GPIO_PC_BASE, GPIO_SIZE))== NULL){
+	// 		printk(KERN_ERR "Mapping of GPIO failed\n");
+	// 		return -ENOMEM;
+	// }
 
-	iowrite32(0x33333333, vgpio_pc+0x04); //MODEL
-	iowrite32(0xFF, vgpio_pc+0x0c); //DOUT
+	iowrite32(0x33333333, GPIO_PC_MODEL); //MODEL
+	iowrite32(0xFF, GPIO_PC_DOUT); //DOUT
 
 
 	// Add device/ create device files for user mode
@@ -158,7 +137,7 @@ static int __init template_init(void)
 		return PTR_ERR(cl);
 	}
 
-	if(IS_ERR(dev_ret = device_create(cl, NULL, dev_num, NULL, "buttons"))){
+	if(IS_ERR(dev_ret = device_create(cl, NULL, dev_num, NULL, "button_driver"))){
 		class_destroy(cl);
 		unregister_chrdev_region(dev_num, 1);
 		return PTR_ERR(dev_ret);
@@ -171,7 +150,7 @@ static int __init template_init(void)
 		unregister_chrdev_region(dev_num, 1);
 		return ret;
 	}
-	printk(KERN_INFO "Driver initiated successfully")
+	printk(KERN_INFO "Driver initiated successfully");
 
 
 	return 0;
@@ -181,7 +160,7 @@ static int __init template_init(void)
  * template_cleanup - function to cleanup this module from kernel space
  */
 
-static void __exit template_cleanup(void)
+static void __exit gpio_cleanup(void)
 {
 	printk(KERN_INFO "Killing driver");
 
@@ -194,14 +173,13 @@ static void __exit template_cleanup(void)
 	device_destroy(cl, dev_num);
 	class_destroy(cl);
 
-	iounmap(vgpio_pc);
+	// iounmap(vgpio_pc);
 	unregister_chrdev_region(dev_num, 1);
 	
-
 }
 
-module_init(template_init);
-module_exit(template_cleanup);
+module_init(gpio_init);
+module_exit(gpio_cleanup);
 
 MODULE_DESCRIPTION("Amazingness, I am god");
 MODULE_LICENSE("GPL");
