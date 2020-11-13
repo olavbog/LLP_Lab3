@@ -56,7 +56,7 @@ static ssize_t gamepad_read(struct file *filp, char __user *buff, size_t len, lo
 	// uint8_t data = ioread8(GPIO_PC_DIN);
 	uint8_t data;
 	data = button_action;
-	printk(KERN_INFO "Has something happened (8 for no) - %d", data);
+	printk(KERN_INFO "Has something happened (8 for no) - %d\n", data);
 	copy_to_user(buff,&data,1);
 	button_action = 8;
 	return len; // return number of bytes read
@@ -64,7 +64,7 @@ static ssize_t gamepad_read(struct file *filp, char __user *buff, size_t len, lo
 
 // User program writes to the driver
 static ssize_t gamepad_write(struct file *filp, const char __user *buff, size_t len, loff_t *offp){
-	printk(KERN_INFO "I was written to");
+	printk(KERN_INFO "I was written to\n");
 	return len; //return the number of bytes written. Standard write response
 } 
 
@@ -76,11 +76,11 @@ static ssize_t gamepad_write(struct file *filp, const char __user *buff, size_t 
 
 static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt_regs* regs)
 {
-	printk(KERN_ALERT "Interrupt detected");
-	printk(KERN_ALERT "I am working, and I am awesome");
+	printk(KERN_ALERT "Interrupt detected\n");
+	printk(KERN_ALERT "I am working, and I am awesome\n%u",~ioread8(GPIO_PC_DIN));
 
 	// Save the event that occurred during the interrupt
-	button_action = ioread8(GPIO_PC_DIN);
+	button_action = ~(ioread8(GPIO_PC_DIN));
 	// Clear current interrupt flags
 	iowrite32(ioread32(GPIO_IF),GPIO_IFC);
 	
@@ -194,8 +194,8 @@ static int __init gamepad_init(void)
 	iowrite32(0x22222222, GPIO_EXTIPSELL);//Connect interrupt to pin on GPIO bank PC
 	 
 	/*Technically we would only need to trigger on rising edge for the game*/
-	// iowrite32(0xFF, 	  GPIO_EXTIFALL); //Interrupt trigger on falling edge
-	iowrite32(0xFF, 	  GPIO_EXTIRISE); //Interrupt trigger on rising edge
+	iowrite32(0xFF, 	  GPIO_EXTIFALL); //Interrupt trigger on falling edge
+	// iowrite32(0xFF, 	  GPIO_EXTIRISE); //Interrupt trigger on rising edge
 	iowrite32(0xFF, 	  GPIO_IEN);      //Enable interrupts
 
 

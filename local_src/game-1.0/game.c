@@ -21,6 +21,7 @@ uint32_t block[BLOCKSIZE*BLOCKSIZE];
 
 int fbfd;
 struct fb_copyarea rect;
+struct fb_var_screeninfo vinfo;
 
 
 uint16_t* fbp;
@@ -37,10 +38,16 @@ int main(int argc, char *argv[])
 {
 	fbfd = open("/dev/fb0", O_RDWR); // O_RDWR = read and write access
 
+	ioctl(fbfd,FBIOGET_VSCREENINFO,&vinfo);
+
 	rect.dx = 0;
 	rect.dy = 0;
-	rect.width  = 320;
-	rect.height = 240;
+	rect.width  = vinfo.xres;
+	rect.height = vinfo.yres;
+
+	int framebuffer_size = vinfo.xres * vinfo.yres;// * vinfo.bits_per_pixel/8;
+
+	printf("width %d height %d bytesize %d", vinfo.xres, vinfo.yres, framebuffer_size);
 
 
 	printf("Driver test \n");
@@ -48,43 +55,47 @@ int main(int argc, char *argv[])
 	int gpio = open("/dev/button_driver", O_RDWR);
 	if(gpio != -1)
 	{
-		printf("GPIO %i",gpio);
 		// gpio_p = mmap(NULL, 12, PROT_READ|PROT_WRITE,MAP_SHARED,GPIO, 0);
 		uint8_t *buffer;
 
 		read(gpio, buffer, 1);
-		printf("\nGPIO read = ");
 		printf("GPIO read = %x",*buffer);
 		printf("\n");
 	}
-
+	close(gpio);
 	printf("Initializing game......\n");
 
 
 	//memory map the framebuffer so we can directly edit this and run the update
 	//ioctl command
-	fbp = mmap(NULL, SCREEN_WIDTH*SCREEN_HEIGHT*2, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
+	fbp = (uint16_t *)mmap(NULL, framebuffer_size, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
 
 
 
 
 	printf("fbp worked well. Starting for loop\n");
-	for(int i = 0; i < rect.width*rect.height*2; i++)
+	for(int i = 0; i < framebuffer_size; i++)
 	{
 		fbp[i]=0x0DB7;
 	}
-	ioctl(fbfd, 0x4680, &rect);
+	// 
 
 	printf("for loop finished.... \n");
 
 
 	printf("Drawing string\n");
-	display_string(1, SCREEN_WIDTH/2, "This is a dog");
+	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "This is a dog");
 	
+	rect.dx = 0;
+	rect.dy = 0;
+	rect.width  = vinfo.xres;
+	rect.height = vinfo.yres;
+
+	ioctl(fbfd, 0x4680, &rect);
 
 	// Undo all opens and memory mappings
 	printf("munmap\n");
-	munmap(fbp, SCREEN_WIDTH*SCREEN_HEIGHT*2);
+	munmap(fbp, framebuffer_size);
 
 	printf("close\n");
 	close(fbfd);
@@ -121,7 +132,7 @@ void display_string(int x, int y, char string[])
 	rect.width  = 8*i;
 	rect.height = 9;
 	// Should only be the square of the text
-	ioctl(fbfd, 0x4680, &rect);
+	// ioctl(fbfd, 0x4680, &rect);
 }
 
 void display_char(int x, int y, char ch)
