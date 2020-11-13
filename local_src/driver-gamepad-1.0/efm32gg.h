@@ -43,6 +43,9 @@
 #define GPIO_IEN       ((volatile uint32_t*)(GPIO_PA_BASE + 0x110))
 #define GPIO_IFC       ((volatile uint32_t*)(GPIO_PA_BASE + 0x11c))
 
+#define GPIO_IRQ_EVEN 17
+#define GPIO_IRQ_ODD  18
+
 // CMU
 
 #define CMU_BASE2 0x400c8000

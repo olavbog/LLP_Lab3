@@ -11,25 +11,25 @@
 
 
 #include "function_def.h"
+#include "font8x8.h"
+
+#define SCREEN_WIDHT  320
+#define SCREEN_HEIGHT 240
+
 
 #define BLOCKSIZE 10
 uint32_t block[BLOCKSIZE*BLOCKSIZE];
 
 int fbfd;
 struct fb_copyarea rect;
-struct psf_header {
-	uint8_t magic[2];
-	uint8_t filemode;
-	uint8_t fontheight;
-};
+
 
 uint16_t* fbp;
 void draw_rect(int,int,int,int);
 void draw_triangle(int,int,int);
 void draw_pixel(int,int);
-void display_string(char s[], int x, int y, uint8_t chars[]);
-void display_char(char ch, int x, int y, uint8_t chars[]);
-void set_block(uint32_t x, uint32_t y, uint32_t L);
+void display_string(int, int, char[]);
+void display_char(int, int, char);
 // void circle(int,int, int);
 
 
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
 	rect.dx = 0;
 	rect.dy = 0;
-	rect.width = 320;
+	rect.width  = 320;
 	rect.height = 240;
 
 
@@ -65,7 +65,6 @@ int main(int argc, char *argv[])
 
 
 
-
 	printf("fbp worked well. Starting for loop\n");
 	for(int i = 0; i < rect.width*rect.height*2; i++){
 		fbp[i]=0x0DB7;
@@ -77,24 +76,23 @@ int main(int argc, char *argv[])
 	// draw_triangle(150,100,20);
 	// draw_pixel(10,10);
 
-	display_string("Hello World", 50,50)
-	ioctl(fbfd, 0x4680, &rect);
-
+	display_string(50, 50, "Hello World");
 	printf("for loop finished.... \n");
-    // close(fbfd);
+
+	// Undo all opens and memory mappings
+	munmap(fbp, SCREEN_WIDHT*SCREEN_HEIGHT*2);
+	close(fbfd);
 
 	printf("Exiting");
-
-	// exit(EXIT_SUCCESS);
-	// exit(0);
-	return EXIT_SUCCESS;
-	// MCU doesnt return back to console here.. Why??
+	exit(EXIT_SUCCESS);
 }
 
 void draw_rect(int x, int y, int width, int height){
 
-	for(int row = y; row < height+y; row++){
-		for(int column = x; column < x+width; column++){
+	for(int row = y; row < height+y; row++)
+	{
+		for(int column = x; column < x+width; column++)
+		{
 			fbp[column + row*320]=0xFFFF;
 		}
 	}
@@ -106,8 +104,10 @@ void draw_triangle(int x,int y, int height){
 	int width = 320;
 	fbp[x + y*width]=0xFFFF;
 	fbp[x + (y+height*2)*width]=0xFFFF;
-	for(int row = 0; row < 2*height; row++){
-		for(int pos = -row-1; pos<row+1;pos++){
+	for(int row = 0; row < 2*height; row++)
+	{
+		for(int pos = -row-1; pos<row+1;pos++)
+		{
 			fbp[x+pos+(y+row)*width]=0xFFFF;
 			fbp[x+pos+(y+4*height-row-2)*width]=0xFFFF;
 		}
@@ -119,52 +119,59 @@ void draw_triangle(int x,int y, int height){
 void draw_pixel(int x,int y)
 {
 	int width = 320;
-	for(int j = 0; j<10;j++){
+	for(int j = 0; j<10;j++)
+	{
 		for(int i = x; i<x+10; i++)
+		{
 			fbp[i+(y+j)*width]=0xFFFF;
+		}
 	}
 	ioctl(fbfd, 0x4680, &rect);
 }
-void set_block(uint32_t x, uint32_t y, uint32_t L)
+
+void display_string(int x, int y, char string[])
 {
-	for(int i = 0; i < L; i++){
-		for(int j = 0; j < L; j++)
-			fbp[i]=0xF81B;
-	}
-}
-
-void display_char(char ch, int x, int y, uint8_t chars[])
-{
-	uint8_t row;
-	int x1 = x;
-	for(int i = 0; i < header.fontheight;i++){
-		row = chars[ch*header.fontheight+i];
-		for(int j = 0< j<8; j++){
-			if(row &0x80){
-				set_block(x1,y,BLOCKSIZE);
-			}
-			row = row << 1;
-			x1 = x1 + BLOCKSIZE;
-		} 
-		y = y + BLOCKSIZE;
-		x1 = x;
-	}
-}
-
-void display_string(char s[], int x, int y)
-{
-	gzFile font = gzopen("/pathtofile",'r');
-
-	gzread(font, &header, sizeof(header));
-	uint8_t chars[header.fontheight * 256];
-	gzread(font, chars,header.fontheight*256);
-
+	/*
+		Loops through all chars in the input strings
+		and writes it to the LCD screen at the given
+		coordinates
+	*/
 	int i = 0;
-	while(s[i])
+	//loop through all chars in input string
+	while(string[i])
 	{
-		display_char(s[i],x,y,chars);
-		x = x + BLOCKSIZE*9;
+		/*
+		   x coordinate will increase by 8 for the width of the char
+		   and 1 for a space inbetween
+		*/
+		if(x+(i*9)+8+y*SCREEN_WIDHT > SCREEN_WIDHT*SCREEN_HEIGHT )
+		{
+			return;
+		}
+		display_char(x+(i*9),y, string[i]); 
 		i++;
 	}
+	rect.dx = x;
+	rect.dy = y;
+	rect.width  = 8*i;
+	rect.height = 8;
+	// Update screen
+	// Should only be the are of the text
+	ioctl(fbfd, 0x4680, &rect);
+}
 
+void display_char(int x, int y, char ch)
+{
+	uint8_t ch_array[8] =  font8x8_basic[ch];
+	for(int i = 0; i < 8; i++)
+	{
+		y += i*SCREEN_WIDHT;
+		for(int j = 0; j < 8; j++)
+		{
+			if(font8x8_basic[ch][i]<<j & 1)
+			{
+				fbp[(x+j)+y*SCREEN_WIDHT]=0xFFFF;
+			}
+		}
+	}
 }
