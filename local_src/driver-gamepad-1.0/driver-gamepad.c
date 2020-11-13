@@ -1,7 +1,6 @@
 /*
  * This is a demo Linux kernel module.
  */
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -21,14 +20,14 @@
 #include "efm32gg.h"
 
 #define GPIO_SIZE 0x24 // number of bytes in a GPIO bank
-#define REG_SIZE  4
+#define REG_SIZE  ((resource_size_t*)4)
 
 // static void __iomem *vgamepad_pc;
 static dev_t dev_num;
 static struct cdev c_dev;
 static struct class *cl;
 
-uint8_t button_action = 8;
+uint8_t button_action;
 
 /*
 User program opens the driver
@@ -55,7 +54,8 @@ e.g static char c;
 static ssize_t gamepad_read(struct file *filp, char __user *buff, size_t len, loff_t *offp){
 	printk(KERN_INFO "I was read\n");
 	// uint8_t data = ioread8(GPIO_PC_DIN);
-	uint8_t data = button_action;
+	uint8_t data;
+	data = button_action;
 	printk(KERN_INFO "Has something happened (8 for no) - %d", data);
 	copy_to_user(buff,&data,1);
 	button_action = 8;
@@ -74,7 +74,7 @@ static ssize_t gamepad_write(struct file *filp, const char __user *buff, size_t 
 */
 
 
-static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt_regs)
+static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt_regs* regs)
 {
 	printk(KERN_ALERT "Interrupt detected");
 	printk(KERN_ALERT "I am working, and I am awesome");
@@ -84,11 +84,12 @@ static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt
 	// Clear current interrupt flags
 	iowrite32(ioread32(GPIO_IF),GPIO_IFC);
 	
+	return IRQ_HANDLED;
 }
 
 
 struct file_operations gamepad_fops = {
-	.owner   = THIS_MODULE,
+	.owner   = THIS_MODULE,	
 	.open    = gamepad_open,
 	.release = gamepad_release, 
 	.read    = gamepad_read,
@@ -114,7 +115,7 @@ static int __init gamepad_init(void)
 	*/
 	int ret;
 	struct device *dev_ret;
-
+	button_action = 8;
 	
 
 	printk(KERN_INFO "Initializing driver");
@@ -141,29 +142,33 @@ static int __init gamepad_init(void)
 		Just do as shown below using if 
 
 	*/
-	if(request_mem_region(GPIO_PC_MODEL, reg_size, "GPIO_PC_MODEL") == NULL)
-	{
-		printk(KERN_ALERT "ERROR requesting MODEL\n");
-		return -1;
-	}
-	if(request_mem_region(GPIO_PC_DOUT, reg_size, "GPIO_PC_DOUT") == NULL)
-	{
-		printk(KERN_ALERT "ERROR requesting DOUT\n");
-		return -1;
-	}
-	if(request_mem_region(GPIO_PC_DIN, reg_size, "GPIO_PC_DIN") == NULL)
-	{
-		printk(KERN_ALERT "ERROR requesting DIN\n");
-		return -1;
-	}
+	resource_size_t regsize = 4;
+	request_mem_region(GPIO_PC_MODEL,(resource_size_t)1, "GPIO_PC_MODEL");
+	request_mem_region(GPIO_PC_DOUT, (resource_size_t)1, "GPIO_PC_DOUT");
+	request_mem_region(GPIO_PC_DIN,  (resource_size_t)1, "GPIO_PC_DIN"); 
+	// if(request_mem_region(GPIO_PC_MODEL, (resource_size_t)4, "GPIO_PC_MODEL") == NULL)
+	// {
+	// 	printk(KERN_ALERT "ERROR requesting MODEL\n");
+	// 	return -1;
+	// }
+	// if(request_mem_region(GPIO_PC_DOUT, (resource_size_t)4, "GPIO_PC_DOUT") == NULL)
+	// {
+	// 	printk(KERN_ALERT "ERROR requesting DOUT\n");
+	// 	return -1;
+	// }
+	// if(request_mem_region(GPIO_PC_DIN, (resource_size_t)4, "GPIO_PC_DIN") == NULL)
+	// {
+	// 	printk(KERN_ALERT "ERROR requesting DIN\n");
+	// 	return -1;
+	// }
 	
 	// Connects interrupts to interrupt handlers
-	if(request_irq(GPIO_EVEN_IRQ_LINE, (irq_handler_t)gamepad_interrupt_handler,IRQF_SHARED,"gamepad",&c_dev))
+	if(request_irq((resource_size_t)GPIO_IRQ_ODD, (irq_handler_t)gamepad_interrupt_handler,IRQF_SHARED,"gamepad",&c_dev))
 	{
 		printk(KERN_ALERT "ERROR requesting IRQ ODD\n");
 		return -1;
 	}
-	if(request_irq(GPIO_EVEN_IRQ_LINE, (irq_handler_t)gamepad_interrupt_handler,IRQF_SHARED,"gamepad",&c_dev))
+	if(request_irq((resource_size_t)GPIO_IRQ_EVEN, (irq_handler_t)gamepad_interrupt_handler,IRQF_SHARED,"gamepad",&c_dev))
 	{
 		printk(KERN_ALERT "ERROR requesting IRQ EVEN\n");
 		return -1;
@@ -227,17 +232,17 @@ static void __exit gamepad_cleanup(void)
 {
 	printk(KERN_INFO "Killing driver");
 
-	release_mem_region(GPIO_PC_MODEL,1);
-	release_mem_region(GPIO_PC_DOUT,1);
-	release_mem_region(GPIO_PC_DIN,1);
+	release_mem_region(GPIO_PC_MODEL,(resource_size_t)4);
+	release_mem_region(GPIO_PC_DOUT,(resource_size_t)4);
+	release_mem_region(GPIO_PC_DIN,(resource_size_t)4);
 
 	// release interrupts
 
 	/* TODO
 		Move these to the close function
 	*/
-	free_irq (GPIO_EVEN_IRQ_LINE, &c_dev);
-	free_irq (GPIO_ODD_IRQ_LINE, &c_dev);
+	free_irq (GPIO_IRQ_EVEN, &c_dev);
+	free_irq (GPIO_IRQ_ODD, &c_dev);
 
 	//unregister device
 	cdev_del(&c_dev);

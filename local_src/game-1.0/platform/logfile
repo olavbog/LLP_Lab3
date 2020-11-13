@@ -1,0 +1,37 @@
+# vim: set fdm=marker fdl=1:
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist clean driver-gamepad
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist clean driver-gamepad; (exit value: 1)
+
+
+
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist compile driver-gamepad
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist compile driver-gamepad; (exit value: 1)
+
+
+
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall driver-gamepad
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall driver-gamepad; (exit value: 1)
+
+
+
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall kernel
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist targetinstall kernel; (exit value: 1)
+
+
+
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist image root.romfs
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist image root.romfs; (exit value: 1)
+
+
+
+{{{ 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist test flash-rootfs
+
+}}} 2020-11-13T15:06:39+0100 /opt/ex3/ptxdist-2013/lib/ptxdist-2013.07.1/bin/ptxdist test flash-rootfs; (exit value: 1)
+
+
+
