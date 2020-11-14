@@ -25,11 +25,15 @@ struct fb_var_screeninfo vinfo;
 
 
 uint16_t* fbp;
+int gpio;
 // void draw_rect(int,int,int,int);
 // void draw_triangle(int,int,int);
 // void draw_pixel(int,int);
 void display_string(int, int, char[]);
 void display_char(int, int, char);
+int gamepad();
+int uninitialize_stuff();
+void sigio_handler(int);
 
 
 
@@ -50,19 +54,7 @@ int main(int argc, char *argv[])
 	printf("width %d height %d bytesize %d", vinfo.xres, vinfo.yres, framebuffer_size);
 
 
-	printf("Driver test \n");
-
-	int gpio = open("/dev/button_driver", O_RDWR);
-	if(gpio != -1)
-	{
-		// gpio_p = mmap(NULL, 12, PROT_READ|PROT_WRITE,MAP_SHARED,GPIO, 0);
-		uint8_t *buffer;
-
-		read(gpio, buffer, 1);
-		printf("GPIO read = %x",*buffer);
-		printf("\n");
-	}
-	close(gpio);
+	gamepad();
 	printf("Initializing game......\n");
 
 
@@ -91,8 +83,9 @@ int main(int argc, char *argv[])
 	rect.width  = vinfo.xres;
 	rect.height = vinfo.yres;
 
+	
 	ioctl(fbfd, 0x4680, &rect);
-
+	while(1);
 	// Undo all opens and memory mappings
 	printf("munmap\n");
 	munmap(fbp, framebuffer_size);
@@ -147,4 +140,50 @@ void display_char(int x, int y, char ch)
 			}
 		}
 	}
+}
+
+int gamepad()
+{
+	printf("Driver test \n");
+
+	gpio = open("/dev/button_driver", O_RDWR);
+	if(gpio == -1)
+	{
+		// Couldnt open file
+		return -1;	
+	}
+	// gpio_p = mmap(NULL, 12, PROT_READ|PROT_WRITE,MAP_SHARED,GPIO, 0);
+	if(signal(SIGIO,&sigio_handler) == SIG_ERR)
+	{
+		// Error for registering signal handler
+		return -1;
+	}
+	if (fcntl(fileno(device),F_SETOWN,getpid()) == -1)
+	{
+		// error setting owner
+		return -1;
+	}
+	long oflags = fcntl(fileno(device),F_GETFL);
+	if(fcntl(fileno(device),F_SETFL, oflags|FASYNC) == -1)
+	{
+		//Error setting flag
+		return -1;
+	}
+
+	return 0
+	// uint8_t *buffer;
+
+	// read(gpio, buffer, 1);
+	// printf("GPIO read = %x",*buffer);
+	// printf("\n");
+	
+}
+
+int uninitialize_stuff()
+{
+	close(gpio);
+}
+void sigio_handler(int signo)
+{
+	printf("Interrupt has occured number something %d", signo);
 }

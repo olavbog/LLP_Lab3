@@ -53,9 +53,9 @@ e.g static char c;
 */
 static ssize_t gamepad_read(struct file *filp, char __user *buff, size_t len, loff_t *offp){
 	printk(KERN_INFO "I was read\n");
-	// uint8_t data = ioread8(GPIO_PC_DIN);
-	uint8_t data;
-	data = button_action;
+	uint8_t data = ~ioread8(GPIO_PC_DIN)
+;	// uint8_t data;
+	// data = button_action;
 	printk(KERN_INFO "Has something happened (8 for no) - %d\n", data);
 	copy_to_user(buff,&data,1);
 	button_action = 8;
@@ -76,15 +76,25 @@ static ssize_t gamepad_write(struct file *filp, const char __user *buff, size_t 
 
 static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt_regs* regs)
 {
-	printk(KERN_ALERT "Interrupt detected\n");
-	printk(KERN_ALERT "I am working, and I am awesome\n%u",~ioread8(GPIO_PC_DIN));
+	printk(KERN_ALERT "Interrupt detected in driver\n");
+	// printk(KERN_ALERT "I am working, and I am awesome\n%u",~ioread8(GPIO_PC_DIN));
 
 	// Save the event that occurred during the interrupt
 	button_action = ~(ioread8(GPIO_PC_DIN));
 	// Clear current interrupt flags
 	iowrite32(ioread32(GPIO_IF),GPIO_IFC);
+	if (async_queue)
+	{
+		kill_fasync(&async_queue,SIGIO,POLL_IN);
+	}
 	
 	return IRQ_HANDLED;
+}
+
+// Asynchronous notification of interrupts
+static int gamepad_fasync(int fd, struct file* filp, int mode)
+{
+	return fasync_helper(fd,filp,mode,&async_queue);
 }
 
 
@@ -93,7 +103,8 @@ struct file_operations gamepad_fops = {
 	.open    = gamepad_open,
 	.release = gamepad_release, 
 	.read    = gamepad_read,
-	.write   = gamepad_write,	
+	.write   = gamepad_write,
+	.fasync  = gamepad_fasync,
 };
 
 
