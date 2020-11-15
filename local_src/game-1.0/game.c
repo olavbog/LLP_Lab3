@@ -9,6 +9,8 @@
 #include <math.h>
 
 
+
+
 #include "function_def.h"
 #include "font8x8.h"
 
@@ -83,7 +85,7 @@ int main(int argc, char *argv[])
 	rect.width  = vinfo.xres;
 	rect.height = vinfo.yres;
 
-	
+
 	ioctl(fbfd, 0x4680, &rect);
 	while(1);
 	// Undo all opens and memory mappings
