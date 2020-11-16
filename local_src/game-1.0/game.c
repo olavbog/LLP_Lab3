@@ -1,8 +1,20 @@
-#include <linux/fb.h>
-#include <stdint.h> //declares uintx_t
+#define _GNU_SOURCE
 
-#include "font8x8.h"
+#include <stdio.h> //printf
+#include <linux/fb.h> //framebuffer
+//declares uintx_t
+#include <sys/mman.h> // adds mmap and ioctl functions
+#include <unistd.h>  //adds close()
+#include <sys/fcntl.h>  
+#include <sys/stat.h> 
+#include <sys/types.h>
+#include <sys/ioctl.h> 
+#include <signal.h> 
+#include <unistd.h> 
+#include <stdlib.h> 
+
 #include "colors.h"
+#include "function_def.h"
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
@@ -18,81 +30,70 @@ uint16_t* fbp; 					//Memory mapping - 16 bits per pixel on the screen
 int gpio; //File open
 
 /*Function declarations*/
-void display_string(int, int, char[]);
-void display_char(int, int, char);
-int gamepad();
-int uninitialize_stuff();
+
+int init_gpio();
 void sigio_handler(int);
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
+
 	fbfd = open("/dev/fb0",O_RDWR); //Open framebuffer driver
 	ioctl(fbfd,FBIOGET_VSCREENINFO, &vinfo); //Get information about screen
 
 	int framebuffer_size = vinfo.xres * vinfo.yres; //Size of the framebuffer
 	fbp = mmap(NULL, framebuffer_size, PROT_READ | PROT_WRITE,MAP_SHARED, fbfd, 0);
 
+	//Set white background
 	for(int i = 0; i < framebuffer_size; i++)
 		fbp[i] = WHITE;
+	update_screen(0,0,vinfo.xres,vinfo.yres);
+	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "This is a dog", BLACK);
 
-	rect.dx = 0;
-	rect.dy = 0;
-	rect.width  = vinfo.xres;
-	rect.height = vinfo.yres;
-	ioctl(fbfd, 0x4680, &rect);
+	init_gpio();
 
-	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "This is a dog");
-
+	while(1);
 	//Unmap and close file
+	close(gpio);
 	munmap(fbp, framebuffer_size);
 	close(fbfd);
-
+	exit(EXIT_SUCCESS);
 	return 0;
 }
 
-void display_char(int x, int y, char ch)
-{
-	for(int i = 0; i < 8; i++)
-	{
-		for(int j = 0; j < 8; j++)
-		{
-			if((font8x8_basic[ch][i]>>j) & 1)
-			{
-				fbp[(x+j)+(i+y)*SCREEN_WIDTH]=0xFFFF;
-			}
-		}
-	}
-}
 
-void display_string(int x, int y, char string[])
-{
-	/*
-		Loops through all chars in the input strings
-		and writes it to the LCD screen at the given
-		coordinates
-	*/
-	int i = 0;
-	//loop through all chars in input string
-	printf("display_string function\n");
-	while(string[i])
-	{
-		/*
-		   x coordinate will increase by 8 for the width of the char
-		   and 1 for a space inbetween
-		*/
-		if(x+(i*8)+8+y*SCREEN_WIDTH > SCREEN_WIDTH*SCREEN_HEIGHT )
-		{
-			printf("Word outside of screen range");
-			return;
-		}
-		display_char(x+(i*8),y, string[i]); 
-		i++;
-	}
-	i--;
+void update_screen(int x, int y, int width, int height){
 	rect.dx = x;
 	rect.dy = y;
-	rect.width  = 8*i;
-	rect.height = 9;
-	// Should only be the square of the text
+	rect.width  = width;
+	rect.height = height;
 	ioctl(fbfd, 0x4680, &rect);
+}
+
+int init_gpio(){
+
+	gpio = open("/dev/gamepad", O_RDWR);
+	if(gpio<0){
+		printf("Error opening gpio driver - %d\n",gpio);
+		return -1;
+	}
+	if(signal(SIGIO,&sigio_handler) == SIG_ERR){
+		printf("Error assigning handler to signal\n");
+		return -1;
+	}
+	if(fcntl(gpio,F_SETOWN,getpid())== -1){
+		printf("Error assigning owner\n");
+		return -1;
+	}
+	long oflags = fcntl(gpio,F_GETFL);
+	if(fcntl(gpio,F_SETFL, oflags|FASYNC)){
+		printf("Error setting flags\n");
+		return -1;
+	}
+	printf("Driver initialize success\n");
+	return 0;
+}
+
+
+void sigio_handler(int no){
+	printf("Hello from sigio_handler\n");
+	return;
 }

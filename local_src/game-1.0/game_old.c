@@ -146,7 +146,7 @@ int gamepad()
 {
 	printf("Driver test \n");
 
-	gpio = open("/dev/button_driver", O_RDWR);
+	gpio = open("/dev/gamepad", O_RDWR);
 	if(gpio == -1)
 	{
 		// Couldnt open file
