@@ -21,7 +21,7 @@ void display_char(int x, int y, unsigned char ch, int color)
 	}
 }
 
-void display_string(int x, int y, char string[],int color)
+void display_string(int x, int y, char string[],int length,int color)
 {
 	/*
 		Loops through all chars in the input strings
@@ -29,9 +29,7 @@ void display_string(int x, int y, char string[],int color)
 		coordinates
 	*/
 	int i = 0;
-	//loop through all chars in input string
-	while(string[i])
-	{
+	for(i;i<length;i++){
 		/*
 		   x coordinate will increase by 8 for the width of the char
 		   and 1 for a space inbetween
@@ -41,7 +39,6 @@ void display_string(int x, int y, char string[],int color)
 			return;
 		}
 		display_char(x+(i*8),y, string[i],color); 
-		i++;
 	}
 	update_screen(x,y,8*i,9);
 }

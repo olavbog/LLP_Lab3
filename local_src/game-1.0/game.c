@@ -100,3 +100,9 @@ void sigio_handler(int no){
 	printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);
 	return;
 }
+
+void start_screen(){
+	display_string(frontpage.new_game.x,frontpage.new_game.y,frontpage.new_game.char,frontpage.new_game.length, BLACK);
+	display_string(frontpage.highscores.x,frontpage.highscores.y,frontpage.highscores.char,frontpage.highscores.length, BLACK);
+	display_string(frontpage.exit_game.x,frontpage.exit_game.y,frontpage.exit_game.char,frontpage.exit_game.length, BLACK);
+}
