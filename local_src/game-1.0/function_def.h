@@ -7,35 +7,32 @@
 #include <stdlib.h> 
 
 /*Function declarations*/
-void display_char(int x, int y, unsigned char ch, int color);
-void display_string(int x, int y, char string[], int color);
-void update_screen(int x, int y, int width, int height);
+void display_char(int, int, unsigned char, int);
+void display_string(int, int, char [], int,int);
+void update_screen(int, int, int, int);
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
 extern uint16_t* fbp;
 
-struct menulink{
-	int x;
-	int y;
-	char[];
-	int length;
-};
-
 struct Game_frontpage{ 
-	char[50];
+	int id;
+	int items;
 	struct menulink{
 		int x;
 		int y;
-		char[50];
+		char string[50];
 		int length;
-	} new_game, highscores, exit_game;
+		int status;
+		int order;
+	} links[3];
 };
-struct Game_frontpage frontpage = {
-	"FrontPage",
-	{SCREEN_WIDTH/2 - 8/2, SCREEN_HEIGHT/3+00, "New Game",8},
-	{SCREEN_WIDTH/2 - 10/2, SCREEN_HEIGHT/3+10, "Highscores",10},
-	{SCREEN_WIDTH/2 - 10/2, SCREEN_HEIGHT/3+20, "Exit Game",9},
+struct Game_screen{
+	int id_current_page;
+	int position;
 };
+
+
+
 

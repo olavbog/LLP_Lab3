@@ -29,7 +29,7 @@ void display_string(int x, int y, char string[],int length,int color)
 		coordinates
 	*/
 	int i = 0;
-	for(i;i<length;i++){
+	for(;i<length;i++){
 		/*
 		   x coordinate will increase by 8 for the width of the char
 		   and 1 for a space inbetween
@@ -40,6 +40,6 @@ void display_string(int x, int y, char string[],int length,int color)
 		}
 		display_char(x+(i*8),y, string[i],color); 
 	}
-	update_screen(x,y,8*i,9);
+	update_screen(x,y,8*i,10);
 }
 

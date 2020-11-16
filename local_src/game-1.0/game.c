@@ -10,46 +10,70 @@
 #include <sys/types.h>
 #include <sys/ioctl.h> 
 #include <signal.h> 
-#include <unistd.h> 
 #include <stdlib.h> 
+#include <string.h>
 
 #include "colors.h"
 #include "function_def.h"
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
+#define SELECTED     1
+#define NOT_SELECTED 0
+
+#define FRONTPAGE 0
+
 
 /*Framebuffer variables*/
-
 int fbfd; 						//File open
 struct fb_copyarea rect; 		//Defines the area that is updated in the framebuffer
 struct fb_var_screeninfo vinfo; //Can receive info about the screen - resolution
 uint16_t* fbp; 					//Memory mapping - 16 bits per pixel on the screen
 
+enum direction{UP,DOWN,RIGHT,LEFT} dir;
+
+
 /*GPIO variables*/
 int gpio; //File open
+
+struct Game_frontpage page_front = {
+	 FRONTPAGE,
+	 3, //number of links on the frontpage
+	{
+		{SCREEN_WIDTH/2 - 8/2*8, SCREEN_HEIGHT/3+00, "New Game",8*8,SELECTED, 0},
+		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+10, "Highscores",10*8, NOT_SELECTED,1},
+		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+20, "Exit Game",9*8, NOT_SELECTED,2},
+	}
+};
+struct Game_screen game_screen;
+
+
+
 
 /*Function declarations*/
 
 int init_gpio();
 void sigio_handler(int);
+void start_screen();
+void selected_background(int,int,int,int);
 
 int main(int argc, char *argv[]){
 
 	fbfd = open("/dev/fb0",O_RDWR); //Open framebuffer driver
 	ioctl(fbfd,FBIOGET_VSCREENINFO, &vinfo); //Get information about screen
 
-	int framebuffer_size = vinfo.xres * vinfo.yres; //Size of the framebuffer
+	int framebuffer_size = vinfo.xres*vinfo.yres;//vinfo.smem_len; //Size of the framebuffer
 	fbp = mmap(NULL, framebuffer_size, PROT_READ | PROT_WRITE,MAP_SHARED, fbfd, 0);
 
 	//Set white background
 	for(int i = 0; i < framebuffer_size; i++)
-		fbp[i] = WHITE;
+		fbp[i] = BLACK;
 	update_screen(0,0,vinfo.xres,vinfo.yres);
-	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "This is a dog", BLACK);
+	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "This is a dog",13, WHITE);
 
 	init_gpio();
-
+	printf("Start screen\n");
+	start_screen();
 	while(1);
 	//Unmap and close file
 	close(gpio);
@@ -94,15 +118,86 @@ int init_gpio(){
 
 
 void sigio_handler(int no){
-	printf("Hello from sigio_handler\n");
+	// printf("Hello from sigio_handler\n");
 	uint32_t gamepad_status;
 	read(gpio,&gamepad_status,1);
-	printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);
+	int i = 0;
+	while(!(gamepad_status>>i & 1))
+		i++;
+	switch(i){
+		case 1:
+		case 5:
+	      dir = DOWN;
+	      break;
+	    case 3:
+	    case 7:
+	      dir = UP;
+	      break;
+	    case 2:
+	    case 6:
+	      dir = RIGHT;
+	      break;
+	    case 0:
+	    case 4:
+	      dir = LEFT;
+	      break;
+	}
+	// printf(game_screen.id_current_page);
+	if(game_screen.id_current_page == page_front.id){
+		printf("frontpage is active\n");
+		for(int i = 0;i<page_front.items;i++){
+			page_front.links[i].status = NOT_SELECTED;
+		}
+
+		if(dir == UP){
+			game_screen.position++;
+		}else if(dir == DOWN){
+			game_screen.position--;
+		}
+		if(game_screen.position < 0){ 
+			game_screen.position = page_front.items - 1;
+		}else if(game_screen.position > page_front.items - 1){
+			game_screen.position = 0;
+		}
+		page_front.links[game_screen.position].status = SELECTED;
+		
+		if(dir == UP || dir == DOWN){
+			for(int i = 0;i<page_front.items;i++){
+				selected_background(page_front.links[i].x,page_front.links[i].y,page_front.links[i].length,page_front.links[i].status);
+			}
+		}
+	}
+	// printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);
 	return;
 }
 
 void start_screen(){
-	display_string(frontpage.new_game.x,frontpage.new_game.y,frontpage.new_game.char,frontpage.new_game.length, BLACK);
-	display_string(frontpage.highscores.x,frontpage.highscores.y,frontpage.highscores.char,frontpage.highscores.length, BLACK);
-	display_string(frontpage.exit_game.x,frontpage.exit_game.y,frontpage.exit_game.char,frontpage.exit_game.length, BLACK);
+	display_string(page_front.links[0].x,page_front.links[0].y,page_front.links[0].string,page_front.links[0].length, WHITE);
+	display_string(page_front.links[1].x,page_front.links[1].y,page_front.links[1].string,page_front.links[1].length, WHITE);
+	display_string(page_front.links[2].x,page_front.links[2].y,page_front.links[2].string,page_front.links[2].length, WHITE);
+	selected_background(page_front.links[0].x,page_front.links[0].y,page_front.links[0].length,page_front.links[0].status);
+	selected_background(page_front.links[1].x,page_front.links[1].y,page_front.links[1].length,page_front.links[1].status);
+	selected_background(page_front.links[2].x,page_front.links[2].y,page_front.links[2].length,page_front.links[2].status);
+	// strcpy(game_screen.current_page,page_front.page_name);
+	game_screen.id_current_page = page_front.id;
+	game_screen.position = 0;
+}
+void selected_background(int x,int y,int width, int status){
+	int height = 8;
+	int start_xy = x+(y-1)*SCREEN_HEIGHT;
+	int stop_xy = (x+width) + (y+height+2)*SCREEN_WIDTH;
+	int font_color = WHITE;
+	int background = BLACK;
+	int selected_background;
+	if(status == 1){
+		selected_background = GRAY;
+	}else{
+		selected_background = background;
+	}
+	for(int i=start_xy;i< stop_xy;i++){
+		if(fbp[i]!=font_color){
+			fbp[i] = selected_background;
+		}
+	}
+	update_screen(x, y, width, height);
 }

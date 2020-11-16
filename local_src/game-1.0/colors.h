@@ -4,3 +4,4 @@
 #define GREEN  0x3FE0
 #define YELLOW 0xFFC0
 #define BLUE   0x001F
+#define GRAY   0x736D
