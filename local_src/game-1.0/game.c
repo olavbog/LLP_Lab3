@@ -95,5 +95,8 @@ int init_gpio(){
 
 void sigio_handler(int no){
 	printf("Hello from sigio_handler\n");
+	uint32_t gamepad_status;
+	read(gpio,&gamepad_status,1);
+	printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);
 	return;
 }

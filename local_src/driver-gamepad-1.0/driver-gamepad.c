@@ -12,6 +12,7 @@
 #include <asm/signal.h>
 #include <asm/siginfo.h>
 #include <linux/fcntl.h>
+#include <linux/uaccess.h>
 
 #include "efm32gg.h"
 
@@ -20,6 +21,7 @@ static struct cdev c_dev; //represents the char device within the kernel
 static struct class *cl;
 static struct device *dev_ret;
 static struct fasync_struct* async_queue;
+static uint32_t gamepad_status = 0;
 
 /* struct cdev {  // This is defined in one of the libraries. THis is just for understanding and documentation
     struct kobject kobj; 
@@ -157,6 +159,7 @@ static int gamepad_release(struct inode *inode, struct file *filp){
 
 static ssize_t gamepad_read(struct file *filp, char __user *buffer, size_t len, loff_t *offp){
 	printk(KERN_INFO "Driver read\n");
+	copy_to_user(buffer,&gamepad_status,1);
 	return 0;
 }
 
@@ -169,7 +172,8 @@ Fasync is called to add or remove entries from a queue. Saying that an
 event has occurred(?)
 */
 static irqreturn_t gamepad_interrupt_handler(int irq_no, void *dev_id, struct pt_regs* regs){
-	printk(KERN_INFO "Interrupt detected in driver\n");
+	// printk(KERN_INFO "Interrupt detected in driver\n");
+	gamepad_status=~(ioread32(GPIO_PC_DIN)&0xFF);//read DIN
 	iowrite32(ioread32(GPIO_IF),GPIO_IFC);
 	if(async_queue)
 	{
