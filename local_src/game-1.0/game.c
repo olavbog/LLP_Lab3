@@ -34,7 +34,7 @@ struct Game_character square_box;
 int framebuffer_size;
 
 
-enum direction{UP,DOWN,RIGHT,LEFT} dir;
+enum direction{UP,DOWN,RIGHT,LEFT,ENTER} dir;
 
 
 /*GPIO variables*/
@@ -82,9 +82,16 @@ int main(int argc, char *argv[]){
 
 	init_gpio();
 	printf("Start screen\n");
-	// start_screen();
-	start_game();
-	// draw_item(50, 50, 10,10,NULL);
+	while(screens.exit==false){
+		if(curr_screen.change)
+			change_screens()
+		if(curr_screen.id_current_screen == FRONTPAGE){
+			start_screen();
+			while(curr_screen.change==false);
+		}
+		else if(curr_screen.id_current_screen == GAMEPAGE)
+			start_game();
+	}
 
 	//Unmap and close file
 	close(gpio);
@@ -129,19 +136,20 @@ void sigio_handler(int no){
 	switch(i){
 		case 1:
 		case 5:
-	      dir = DOWN;
+	      	dir = DOWN;
 	      break;
 	    case 3:
 	    case 7:
-	      dir = UP;
+	      	dir = UP;
 	      break;
 	    case 2:
 	    case 6:
-	      dir = RIGHT;
+	      	dir = RIGHT;
 	      break;
 	    case 0:
+	      	dir = LEFT;
 	    case 4:
-	      dir = LEFT;
+	    	dir = ENTER;
 	      break;
 	}
 	// printf(curr_screen.id_current_screen);
@@ -153,16 +161,12 @@ void sigio_handler(int no){
 		}
 
 		if(dir == UP){
-			frontscreen.position++;
+			if(++frontscreen.position>frontscreen.items - 1)
+				frontscreen.position = 0;
 		}
 		else if(dir == DOWN){
-			frontscreen.position--;
-		}
-		if(frontscreen.position < 0){ 
-			frontscreen.position = frontscreen.items - 1;
-		}
-		else if(frontscreen.position > frontscreen.items - 1){
-			frontscreen.position = 0;
+			if(--frontscreen.position < 0)
+				frontscreen.position = frontscreen.items - 1;
 		}
 		frontscreen.links[frontscreen.position].status = SELECTED;
 		
@@ -171,6 +175,9 @@ void sigio_handler(int no){
 			for(int i = 0;i<frontscreen.items;i++){
 				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
 			}
+		}else if(dir == ENTER){
+			if(frontscreen.position == 0)
+				curr_screen.change = true;
 		}
 	}else if(curr_screen.id_current_screen == GAMEPAGE)
 	{
@@ -179,6 +186,16 @@ void sigio_handler(int no){
 	// printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);
 	return;
 }
+
+void change_screens(){
+	if(curr_screen.id_current_screen == FRONTPAGE){
+		curr_screen.id_current_screen = GAMEPAGE;
+	}else if(curr_screen.id_current_screen == GAMEPAGE){
+		curr_screen.id_current_screen == FRONTPAGE;	
+	}
+	curr_screen.change = false;
+}
+
 
 void start_screen(){
 	display_string(frontscreen.links[0].x,frontscreen.links[0].y,frontscreen.links[0].string,frontscreen.links[0].length, WHITE);
@@ -189,7 +206,8 @@ void start_screen(){
 	selected_background(frontscreen.links[2].x,frontscreen.links[2].y,frontscreen.links[2].length,frontscreen.links[2].status);
 	// strcpy(curr_screen.current_screen,frontscreen.screen_name);
 	frontscreen.position = 0;
-	// curr_screen.id_current_screen = frontscreen.id;
+	curr_screen.id_current_screen = frontscreen.id;
+	curr_screen.exit = false;
 	// frontscreen.position = 0;
 }
 
@@ -205,7 +223,7 @@ void start_game(){
 	for(int i = 0; i < framebuffer_size; i++)
 		fbp[i] = background_color;
 	update_screen(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
-	printf("SCreen updated\n");
+	printf("Screen updated\n");
 	//initialize main character
 	square_box.x = SCREEN_WIDTH/2-10/2;
 	square_box.y = SCREEN_HEIGHT/2-10/2;

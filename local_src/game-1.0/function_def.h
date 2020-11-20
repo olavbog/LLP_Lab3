@@ -36,6 +36,8 @@ struct Game_frontscreen{
 };
 struct screens{
 	int id_current_screen;
+	bool change;
+	bool exit;
 };
 
 struct Game_screen{
