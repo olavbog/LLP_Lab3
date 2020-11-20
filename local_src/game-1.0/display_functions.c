@@ -7,6 +7,41 @@
 #include "function_def.h"
 #include "colors.h"
 
+
+void update_screen(int x, int y, int width, int height){
+	rect.dx = x;
+	rect.dy = y;
+	rect.width  = width;
+	rect.height = height;
+	ioctl(fbfd, 0x4680, &rect);
+}
+
+
+void draw_item(int x, int y, int width, int height, uint8_t* pixel_map)
+{
+	int color = GREEN;
+	if(pixel_map == NULL)
+	{
+		for(int row_y; row_y < height; row_y++)
+			for(int col_x; col_x < width; col_x++)
+				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = color;
+	}
+	else{
+		//insert pixel map function here
+		// very similar to previous, but will draw
+		// what is sent through the pixel map
+		// pointer
+	}
+	update_screen(x, y, width, height);
+}
+void erase_item(int x, int y, int width, int height,int fill_color)
+{
+	for(int row_y; row_y < height; row_y++)
+			for(int col_x; col_x < width; col_x++)
+				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = fill_color;
+	update_screen(x, y, width, height);
+}
+
 void display_char(int x, int y, unsigned char ch, int color)
 {
 	for(int i = 0; i < 8; i++)

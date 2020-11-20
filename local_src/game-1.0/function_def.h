@@ -10,15 +10,20 @@
 void display_char(int, int, unsigned char, int);
 void display_string(int, int, char [], int,int);
 void update_screen(int, int, int, int);
+void draw_item(int, int, int, int, uint8_t*);
+void erase_item(int, int, int ,int ,int);
+
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
 extern uint16_t* fbp;
+extern struct fb_copyarea rect;
 
-struct Game_frontpage{ 
+struct Game_frontscreen{ 
 	int id;
 	int items;
+	int position;
 	struct menulink{
 		int x;
 		int y;
@@ -28,9 +33,21 @@ struct Game_frontpage{
 		int order;
 	} links[3];
 };
-struct Game_screen{
+struct screens{
 	int id_current_page;
-	int position;
+};
+
+struct Game_screen{
+	int id;
+};
+
+struct Game_character{
+	int x;
+	int y;
+	int last_y;
+	int width;
+	int height;
+	int velocity;
 };
 
 
