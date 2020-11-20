@@ -5,6 +5,7 @@
 #include <signal.h> 
 #include <unistd.h> 
 #include <stdlib.h> 
+#include <stdbool.h> 
 
 /*Function declarations*/
 void display_char(int, int, unsigned char, uint16_t);
@@ -36,7 +37,7 @@ struct Game_frontscreen{
 };
 struct screens{
 	int id_current_screen;
-	bool change;
+	int change;
 	bool exit;
 };
 

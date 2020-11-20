@@ -12,7 +12,8 @@
 #include <signal.h> 
 #include <stdlib.h> 
 #include <string.h>
-#include <math.h>
+
+#include <stdbool.h> // includes bool
 
 #include "colors.h"
 #include "function_def.h"
@@ -65,6 +66,7 @@ void sigio_handler(int);
 void start_screen();
 void start_game();
 void selected_background(int,int,int,int);
+void change_screens();
 
 int main(int argc, char *argv[]){
 
@@ -82,15 +84,19 @@ int main(int argc, char *argv[]){
 
 	init_gpio();
 	printf("Start screen\n");
-	while(screens.exit==false){
-		if(curr_screen.change)
-			change_screens()
+	while(curr_screen.exit==false){
+		if(curr_screen.change==1)
+			change_screens();
 		if(curr_screen.id_current_screen == FRONTPAGE){
 			start_screen();
-			while(curr_screen.change==false);
-		}
-		else if(curr_screen.id_current_screen == GAMEPAGE)
+			printf("Starting startscreen loop \n");
+			while(curr_screen.change==0){
+				usleep(10);
+				// printf("Currscreen %i\n",curr_screen.change);
+			}
+		}else if(curr_screen.id_current_screen == GAMEPAGE)
 			start_game();
+		printf("Hello from mail loop\n");
 	}
 
 	//Unmap and close file
@@ -131,7 +137,7 @@ void sigio_handler(int no){
 	uint32_t gamepad_status;
 	read(gpio,&gamepad_status,1);
 	int i = 0;
-	while(!(gamepad_status>>i & 1))
+	while(!(gamepad_status>>i & 1) && i<8)
 		i++;
 	switch(i){
 		case 1:
@@ -151,7 +157,10 @@ void sigio_handler(int no){
 	    case 4:
 	    	dir = ENTER;
 	      break;
+	    default:
+	    	break;
 	}
+	printf("Button pushed %i\n",i);
 	// printf(curr_screen.id_current_screen);
 	if(curr_screen.id_current_screen == FRONTPAGE)
 	{
@@ -159,26 +168,28 @@ void sigio_handler(int no){
 		for(int i = 0;i<frontscreen.items;i++){
 			frontscreen.links[i].status = NOT_SELECTED;
 		}
-
-		if(dir == UP){
-			if(++frontscreen.position>frontscreen.items - 1)
-				frontscreen.position = 0;
-		}
-		else if(dir == DOWN){
-			if(--frontscreen.position < 0)
-				frontscreen.position = frontscreen.items - 1;
-		}
-		frontscreen.links[frontscreen.position].status = SELECTED;
 		
 		if(dir == UP || dir == DOWN)
 		{
+			if(dir == UP){
+				if(++frontscreen.position>frontscreen.items - 1)
+					frontscreen.position = 0;
+			}
+			else if(dir == DOWN){
+				if(--frontscreen.position < 0)
+					frontscreen.position = frontscreen.items - 1;
+			}
+			frontscreen.links[frontscreen.position].status = SELECTED;
+		
 			for(int i = 0;i<frontscreen.items;i++){
 				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
 			}
 		}else if(dir == ENTER){
 			if(frontscreen.position == 0)
-				curr_screen.change = true;
+				curr_screen.change = 1;
+
 		}
+		printf("Curr post %i\n", frontscreen.position);
 	}else if(curr_screen.id_current_screen == GAMEPAGE)
 	{
 		square_box.velocity = 5;
@@ -188,12 +199,14 @@ void sigio_handler(int no){
 }
 
 void change_screens(){
+	printf("Changing screens\n");
 	if(curr_screen.id_current_screen == FRONTPAGE){
 		curr_screen.id_current_screen = GAMEPAGE;
 	}else if(curr_screen.id_current_screen == GAMEPAGE){
-		curr_screen.id_current_screen == FRONTPAGE;	
+		curr_screen.id_current_screen = FRONTPAGE;	
 	}
-	curr_screen.change = false;
+	printf("New screen %i", curr_screen.id_current_screen);
+	curr_screen.change = 0;
 }
 
 
@@ -208,6 +221,7 @@ void start_screen(){
 	frontscreen.position = 0;
 	curr_screen.id_current_screen = frontscreen.id;
 	curr_screen.exit = false;
+	curr_screen.change = 0;
 	// frontscreen.position = 0;
 }
 

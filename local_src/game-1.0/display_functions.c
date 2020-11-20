@@ -25,13 +25,13 @@ void draw_item(int x, int y, int width, int height, uint8_t* pixel_map)
 {
 	printf("draw_item()\n");
 	// int color = GREEN;
-	uint16_t color = 0x001F;
+	uint16_t color = GREEN;
 	if(pixel_map == NULL)
 	{
 		printf("Drawing box\n");
 		for(int row_y=0; row_y < height; row_y++){
 			for(int col_x=0; col_x < width; col_x++)
-				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = 0xFFFF;
+				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = color;
 		}
 	}
 	else{
