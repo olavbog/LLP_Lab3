@@ -149,16 +149,13 @@ static void __exit gamepad_cleanup(void){
 
 
 static int gamepad_open(struct inode *inode, struct file *filp){
-	printk("Driver opened\n");
 	return 0;
 }
 static int gamepad_release(struct inode *inode, struct file *filp){
-	printk("Driver Closed\n");
 	return 0;
 }
 
 static ssize_t gamepad_read(struct file *filp, char __user *buffer, size_t len, loff_t *offp){
-	printk(KERN_INFO "Driver read\n");
 	copy_to_user(buffer,&gamepad_status,1);
 	return 0;
 }

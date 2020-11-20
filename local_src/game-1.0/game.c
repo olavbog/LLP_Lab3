@@ -24,17 +24,18 @@
 #define SELECTED     1
 #define NOT_SELECTED 0
 
-#define FRONTPAGE 0
-#define PLAYPAGE 1
-#define SCOREPAGE 2
-#define GAMEOVERPAGE 3
+#define FRONTSCREEN 0
+#define GAMESCREEN 1
+#define SCORESCREEN 2
+#define GAMEOVERSCREEN 3
 
-#define GAME_TICK_TIME 200000
+#define GAME_TICK_TIME 100000
 
 // Defines for player
 #define PLAYER_GRAVITY 1
 #define STARTPOSITION 80 // height the bird will spawn at
 #define BIRDSIZE 16
+#define MAX_PLAYER_VELOCITY 4
 
 // Defines for pillars
 #define PILLAR_WIDTH 30
@@ -47,7 +48,7 @@ int fbfd; 						//File open
 struct fb_var_screeninfo vinfo; //Can receive info about the screen - resolution
 uint16_t* fbp; 					//Memory mapping - 16 bits per pixel on the screen
 
-struct Game_character square_box;
+// struct Game_character square_box;
 int framebuffer_size;
 
 
@@ -58,8 +59,8 @@ enum direction{UP,DOWN,RIGHT,LEFT,ACTION} dir;
 /*GPIO variables*/
 int gpio; //File open
 
-struct Game_frontpage frontscreen = {
-	 FRONTPAGE,
+struct Game_frontscreen frontscreen = {
+	 FRONTSCREEN,
 	 3, //number of links on the frontscreen
 	 0,
 	{
@@ -68,10 +69,10 @@ struct Game_frontpage frontscreen = {
 		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+20, "Exit Game",  9*8, NOT_SELECTED,2},
 	}
 };
-struct sceens curr_screen;
+struct screens curr_screen;
 
 struct Game_play game_play = {
-		PLAYPAGE, //ID
+		GAMESCREEN, //ID
 		0, // player's score
 		"000",
 		3, // number of pillars
@@ -89,12 +90,12 @@ struct Player player = {
 			0, // game ticks since last button push
 };
 struct Game_highscore game_highscore = {
-		SCOREPAGE,
+		SCORESCREEN,
 		{
 			{"000"}, {"000"}, {"000"}, {"000"}, {"000"},
 		}
 };
-struct Game_over game_over = { GAMEOVERPAGE };
+struct Game_over game_over = { GAMEOVERSCREEN };
 // struct Game_exit game_exit = { 0, };
 
 
@@ -106,7 +107,7 @@ void start_screen();
 void selected_background(int,int,int,int);
 
 
-void change_screens();
+// void change_screens();
 void spawn_map();
 void draw_bird(int);
 void update_bird();
@@ -145,39 +146,46 @@ int main(int argc, char *argv[]){
 	init_gpio();
 	printf("Start screen\n");
 
-	srand(time(NULL)); // Init of random gen for pillar generate
+	srand(time(0)); // Init of random gen for pillar generate
+	start_screen();
 	while(curr_screen.exit==false){
-		if(curr_screen.id_current_page == FRONTPAGE){
-			start_screen();
-			while(curr_screen.change==0) // Wait for player to select a menu
-				usleep(10);
-		}else if(curr_screen.id_current_page == PLAYPAGE){ // is the game running?
+		if(curr_screen.id_current_screen == FRONTSCREEN){
+			usleep(10);
+		}else if(curr_screen.id_current_screen == GAMESCREEN){ // is the game running?
 			//  - add game-tick timer(https://developer.ibm.com/tutorials/l-timers-list/)?
+			// printf("current screen is GAMESCREEN\n");
 			usleep(GAME_TICK_TIME);
 			update_pillar();
 			update_bird();
 			if (collision() != 0)
 			{ // check for collision. if not, update score
 				//save_score();
-				curr_screen.id_current_page = GAMEOVERPAGE;
+				printf("Collision detected\n");
+				curr_screen.id_current_screen = GAMEOVERSCREEN;
 			}
 			display_score();
+			printf("Loop done\n");
 			// wait for game-tick timer wakeup, can use delay until timer is implemented
-		} else if(curr_screen.id_current_page == GAMEOVERPAGE) { 	// game over, freeze screen
+		} else if(curr_screen.id_current_screen == GAMEOVERSCREEN) { 	// game over, freeze screen
 			// Write "Game Over" in the middle of the screen
-			display_string(SCREEN_WIDTH/2 - 9/2*8, SCREEN_HEIGHT/3+10, "Game Over", 9*8, WHITE);
-			display_string(SCREEN_WIDTH/2 - 27*8/2, SCREEN_HEIGHT/3+20, "Push any button to continue", 27*8, WHITE);
+			printf("current screen is GAMEOVERSCREEN\n");
+			
+			display_string(SCREEN_WIDTH/2 - 9/2*8, SCREEN_HEIGHT/3+10, "Game Over", 9, WHITE);
+			display_string(SCREEN_WIDTH/2 - 27*8/2, SCREEN_HEIGHT/3+20, "Push any button to continue", 27, WHITE);
 			// wait for button input. If pushed go back to main menu
-			while(curr_screen.id_current_page == GAMEOVERPAGE)
-				usleep(10); //small delayed needed for the variable to be able to change
+			usleep(10);
+			printf("Wrote to screen \n");
+			player.position = STARTPOSITION;
 
-			printf("Start screen\n");
+			while(curr_screen.id_current_screen == GAMEOVERSCREEN)
+				usleep(10); //small delayed needed for the variable to be able to change
 			start_screen();
 		}
 		// if(game_exit.pressed){ // Exit has been pressed on main menu
 		// 	break; // Break ininite while loop
 		// };
 	};
+	printf("Exiting");
 
 	//Unmap and close file
 	close(gpio);
@@ -202,14 +210,15 @@ void display_score()
 
 int collision()
 {
-	if(player.position < BIRDSIZE/2 || player.position > SCREEN_HEIGHT-BIRDSIZE/2){ // Top and bottom of screen
+	printf("Checking collision \n");
+	if(player.position-BIRDSIZE/2 < BIRDSIZE || player.position+BIRDSIZE/2 > SCREEN_HEIGHT-BIRDSIZE/2){ // Top and bottom of screen
 		return -1;
 	}
 	for(int i = 0; i < game_play.num_of_pillars; i++){
 		// check if player is within the pillars
-		if (game_play.pillars[i].x_position > (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH && game_play.pillars[i].x_position < (SCREEN_WIDTH/4)+BIRDSIZE/2) {
+		if (game_play.pillars[i].x_position > (SCREEN_WIDTH/4)-PILLAR_WIDTH && game_play.pillars[i].x_position < (SCREEN_WIDTH/4)+BIRDSIZE) {
 			//check if player has collided with the pillars
-			if(player.position < game_play.pillars[i].y_gap_center - PILLAR_GAP/2 || player.position > game_play.pillars[i].y_gap_center + PILLAR_GAP/2){
+			if(player.position - BIRDSIZE/2 < game_play.pillars[i].y_gap_center - PILLAR_GAP/2){// || player.position+BIRDSIZE/2 > game_play.pillars[i].y_gap_center + PILLAR_GAP/2){
 				return -1;
 			}
 		}
@@ -235,50 +244,60 @@ void init_pillar()
 	spawn_pillar(2, PILLAR_WIDTH+SCREEN_WIDTH+DISTANCE_BETWEEN_PILLARS*2);
 }
 
-void spawn_pillar(int pillarnr, int x_position)
+void spawn_pillar(int pillarnr, int pos_x)
 {
-	game_play.pillars[pillarnr].x_position   = x_position;
+	game_play.pillars[pillarnr].x_position   = pos_x;
 	game_play.pillars[pillarnr].y_gap_center = rand() % (SCREEN_HEIGHT - 2*PILLAR_GAP) + PILLAR_GAP;
 	game_play.pillars[pillarnr].gave_score   = 0;
 }
 
 void update_pillar()
-{
-	for(int i = 0;i<game_play.num_of_pillars;i++){
-		if (game_play.pillars[i].x_position == -PILLAR_WIDTH){
-			spawn_pillar(i, game_play.num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
-	  	}else{
-			game_play.pillars[i].x_position -= PILLAR_SPEED;
-		}
-		if(game_play.pillars[i].x_position < SCREEN_WIDTH){
-			remove_pillar(i);
-			draw_pillar(i);
-		}
-	}
+{	
+	// for(int i = 0; i < game_play.num_of_pillars; i++){
+	// 	if (game_play.pillars[i].x_position == -PILLAR_WIDTH){
+	// 		spawn_pillar(i, game_play.num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
+	//   	}else{
+	// 		game_play.pillars[i].x_position -= PILLAR_SPEED;
+	// 	}
+	// 	if(game_play.pillars[i].x_position < SCREEN_WIDTH){
+	// 		remove_pillar(i);
+	// 		draw_pillar(i);
+	// 	}
+	// }
+	// spawn_pillar(0, SCREEN_WIDTH);
+	remove_pillar(0);
+	game_play.pillars[0].x_position -= PILLAR_SPEED;
+	draw_pillar(0);
 }
 
 void remove_pillar(int i){
-	if(game_play.pillars[i].x_position < SCREEN_WIDTH-PILLAR_WIDTH){
-		draw_item(game_play.pillars[i].x_position+PILLAR_WIDTH, 0, PILLAR_SPEED, 2*SCREEN_HEIGHT/3, BLUE, NULL);
-		draw_item(game_play.pillars[i].x_position+PILLAR_WIDTH, 2*SCREEN_HEIGHT/3, PILLAR_SPEED, SCREEN_HEIGHT/3, GREEN, NULL);
-	}
+	int remove_outside = 0;
+	// if(game_play.pillars[i].x_position < SCREEN_WIDTH){
+	// if(game_play.pillars[i].x_position+PILLAR_WIDTH/2>SCREEN_WIDTH)
+	// 	remove_outside = game_play.pillars[i].x_position+PILLAR_WIDTH - SCREEN_WIDTH;
+	// if(remove_outside<PILLAR_WIDTH)
+	if(game_play.pillars[i].x_position<SCREEN_WIDTH-PILLAR_WIDTH/2 && game_play.pillars[i].x_position > 0)
+		draw_item(game_play.pillars[i].x_position-PILLAR_WIDTH, 0, PILLAR_WIDTH-remove_outside, 2*SCREEN_HEIGHT/3, BLUE, NULL);
+	// draw_item(game_play.pillars[i].x_position-PILLAR_WIDTH, 2*SCREEN_HEIGHT/3, PILLAR_WIDTH-remove_outside, SCREEN_HEIGHT/3, GREEN, NULL);
 }
 
 void draw_pillar(int i)
-{
-	if(game_play.pillars[i].x_position >= 0){ //dont draw outside left edge
-		draw_item(game_play.pillars[i].x_position, 0, PILLAR_SPEED, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, YELLOW, NULL);
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2 , PILLAR_SPEED, SCREEN_HEIGHT-game_play.pillars[i].y_gap_center+PILLAR_GAP/2, YELLOW, NULL);
-	}
-}
+{	
+	int remove_outside = 0;
+	int move_x = 0;
+	// if(game_play.pillars[i].x_position < SCREEN_WIDTH){ //dont draw outside left edge
+	// 	if(game_play.pillars[i].x_position<0){
+	// 		remove_outside = -game_play.pillars[i].x_position;
+	// 		move_x = -game_play.pillars[i].x_position;
+	// 	}
+	// 	else if(game_play.pillars[i].x_position+PILLAR_WIDTH/2>SCREEN_WIDTH)
+	// 		remove_outside = game_play.pillars[i].x_position+PILLAR_WIDTH/2-SCREEN_WIDTH;
 
-void update_screen(int x, int y, int width, int height)
-{
-	rect.dx = x;
-	rect.dy = y;
-	rect.width  = width;
-	rect.height = height;
-	ioctl(fbfd, 0x4680, &rect);
+	// 	draw_item(game_play.pillars[i].x_position+move_x, 0, PILLAR_WIDTH-remove_outside, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL);
+	// 	// draw_item(game_play.pillars[i].x_position+remove_outside, game_play.pillars[i].y_gap_center+PILLAR_GAP/2 , PILLAR_WIDTH-remove_outside, SCREEN_HEIGHT-game_play.pillars[i].y_gap_center+PILLAR_GAP/2, WHITE, NULL);
+	// }
+	if(game_play.pillars[i].x_position<SCREEN_WIDTH - PILLAR_WIDTH/2 && game_play.pillars[i].x_position > 0)
+		draw_item(game_play.pillars[i].x_position-PILLAR_WIDTH, 0, PILLAR_WIDTH-remove_outside, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL);
 }
 
 int init_gpio()
@@ -334,8 +353,7 @@ void sigio_handler(int no)
 	    default:
 	    	break;
 	}
-	// printf(curr_screen.id_current_page);
-	if(curr_screen.id_current_page == frontscreen.id){
+	if(curr_screen.id_current_screen == FRONTSCREEN){
 		if(dir == ACTION){
 			switch(frontscreen.position){
 				case 0: // new game
@@ -345,13 +363,14 @@ void sigio_handler(int no)
 					//game_play.player_score_string[1] = '0';
 					//game_play.player_score_string[2] = '0';
 					memset(&game_play.player_score_string[0], 0, sizeof(game_play.player_score_string));
-					curr_screen.id_current_page = game_play.id;
+					curr_screen.id_current_screen = GAMESCREEN;
 					break;
 				case 1: // high score
-					curr_screen.id_current_page = game_highscore.id;
+					// curr_screen.id_current_screen = SCORESCREEN;
 					break;
 				case 2: // exit game
-					game_exit.pressed = SELECTED;
+					curr_screen.exit = true;
+					usleep(10);
 					break;
 			}
 		}
@@ -373,22 +392,24 @@ void sigio_handler(int no)
 				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
 			}
 		}
-	} else if(curr_screen.id_current_page == GAMEPAGE){ //game is running
+	} else if(curr_screen.id_current_screen == GAMESCREEN){ //game is running
 		if(dir == ACTION){
-			if(player.velocity < 0){
-				player.tick_since_action = 0;
-			}
-
+			// if(player.velocity < 0){
+			// 	player.tick_since_action = 0;
+			// }
+			player.velocity = 7;
 		}
-	} else if(curr_screen.id_current_page == GAMEPAGE){
-		curr_screen.id_current_page = FRONTPAGE;
+	} else if(curr_screen.id_current_screen == GAMEOVERSCREEN){
+		curr_screen.id_current_screen = FRONTSCREEN;
 	}
-
+	// printf("Finished sigio\n");
+	usleep(10);
 	return;
 }
 
 void start_screen()
 {
+	draw_item(0,0,vinfo.xres,vinfo.yres,BLACK,NULL);
 	display_string(frontscreen.links[0].x,frontscreen.links[0].y,frontscreen.links[0].string,frontscreen.links[0].length, WHITE);
 	display_string(frontscreen.links[1].x,frontscreen.links[1].y,frontscreen.links[1].string,frontscreen.links[1].length, WHITE);
 	display_string(frontscreen.links[2].x,frontscreen.links[2].y,frontscreen.links[2].string,frontscreen.links[2].length, WHITE);
@@ -396,89 +417,44 @@ void start_screen()
 	selected_background(frontscreen.links[1].x,frontscreen.links[1].y,frontscreen.links[1].length,frontscreen.links[1].status);
 	selected_background(frontscreen.links[2].x,frontscreen.links[2].y,frontscreen.links[2].length,frontscreen.links[2].status);
 
-	curr_screen.id_current_page = FRONTPAGE;
+	curr_screen.id_current_screen = FRONTSCREEN;
 	curr_screen.exit = false;
 	frontscreen.position = 0;
 }
 
 void spawn_map()
 { // Set initial background in preperation for game start.
-	for(int i = 0; i < (2*vinfo.xres*vinfo.yres/3)-1; i++)
-		fbp[i] = BLUE; // Blue for sky
-	for(int i = 2*vinfo.xres*vinfo.yres/3; i < vinfo.xres*vinfo.yres; i++)
-		fbp[i] = GREEN; // Green for grass
+	printf("Spawn map\n");	
+	for(int i = 0; i < vinfo.xres*vinfo.yres; i++)
+		if(i<2*vinfo.xres*vinfo.yres/3)
+			fbp[i] = BLUE; // Blue for sky
+		else
+			fbp[i] = GREEN; // Green for grass
+	init_pillar();
 	draw_bird(player.position);
-
-// <<<<<<< HEAD
-// void start_game(){
-
-// 	//Init functions
-// 	printf("Start game\n");
-// 	curr_screen.id_current_screen = GAMEPAGE;
-// 	// remove everything on the screen
-// 	int background_color = BLACK;
-// 	printf("updating screen\n");
-// 	for(int i = 0; i < framebuffer_size; i++)
-// 		fbp[i] = background_color;
-// 	update_screen(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
-// 	printf("Screen updated\n");
-// 	//initialize main character
-// 	square_box.x = SCREEN_WIDTH/2-10/2;
-// 	square_box.y = SCREEN_HEIGHT/2-10/2;
-// 	square_box.last_y = square_box.y;
-// 	square_box.width = 10;
-// 	square_box.height = 10;
-// 	square_box.velocity = -5;
-// 	printf("initialized box struct\n");
-
-// 	int acceleration = -1;
-// 	int refrash_rate_us = 500000;
-// 	int refrash_rate_s = 1;//refrash_rate_us/1000000;
-// 	int new_posy;
-// 	printf("Drawing player\n");
-// 	draw_item(square_box.x, square_box.y, square_box.width, square_box.height, NULL);
-
-// 	printf("Start loop\n");
-// 	// start game loop
-// 	while(1)
-// 	{
-// 		usleep(refrash_rate_us);// pause for x microseconds
-// 		//update position
-// 		square_box.last_y = square_box.y;
-// 		new_posy = square_box.y - square_box.velocity*refrash_rate_s;
-// 		printf("last posy %i\nnewposy %i\n", square_box.y, new_posy);
-// 		if(new_posy+square_box.height <= SCREEN_HEIGHT && new_posy > 0)
-// 			square_box.y =  new_posy;
-// 		//update velocity
-// 		if(square_box.velocity > -5)
-// 			square_box.velocity = square_box.velocity + acceleration*(refrash_rate_s);
-// 		// check collisions
-// 		printf("velocity %i\n", square_box.velocity);
-// 		//update screen by erasing last position and drawing new
-// 		erase_item(square_box.x, square_box.last_y, square_box.width, square_box.height, background_color);
-// 		draw_item(square_box.x, square_box.y, square_box.width, square_box.height, NULL);
-// =======
 	update_screen(0,0,vinfo.xres,vinfo.yres);
 }
 
 void update_bird()
 {
-	if(player.velocity != 0){
-		remove_bird(player.position);
-		//update y_position
-		player.position += player.velocity;
-		draw_bird(player.position);
-	}
+	printf("update bird\nvelocity %i\n",player.velocity);
+	remove_bird(player.position);
+
+	//update y_position
+	player.position -= player.velocity;
+	draw_bird(player.position);
+	//accellerate
+	player.velocity -= PLAYER_GRAVITY;
 }
 
-void update_velocity()
-{
-	player.velocity = player.boost - PLAYER_GRAVITY * player.tick_since_action;
-	player.tick_since_action += 1;
-}
+// void update_velocity()
+// {
+// 	player.velocity = player.boost - PLAYER_GRAVITY * player.tick_since_action;
+// 	player.tick_since_action += 1;
+// }
 
 void draw_bird(int position)
-{
+{	
 	draw_item(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLACK, NULL);
 }
 
@@ -487,15 +463,15 @@ void remove_bird(int position)
 {
 	int birdsize_in_blue = 0; // If the first if-sentence fails the whole background should be green
 	//need to remove old bird
-	if((position-BIRDSIZE/2) < 2*SCREEN_HEIGHT/3){
+	printf("Y position %i\n",position);
+	if((position-BIRDSIZE/2) <= 2*SCREEN_HEIGHT/3){
 		draw_item(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLUE, NULL);
 
-		if ((2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2) < 16){ // check if some of the box is over the line between blue and green
-			birdsize_in_blue = 2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2;
-		}
-	}
-	if((position+BIRDSIZE/2) > 2*SCREEN_HEIGHT/3){
-		draw_item(SCREEN_WIDTH/4, position+BIRDSIZE/2, BIRDSIZE, BIRDSIZE-birdsize_in_blue, GREEN, NULL);
+		// if ((2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2) < 16){ // check if some of the box is over the line between blue and green
+		// 	birdsize_in_blue = 2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2;
+		// }
+	}else{
+		draw_item(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, GREEN, NULL);
 	}
 }
 
