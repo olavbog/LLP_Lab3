@@ -1,5 +1,5 @@
-#include <stdint.h> 
-#include <sys/stat.h> 
+#include <stdint.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/ioctl.h> 
 #include <signal.h> 
@@ -22,7 +22,8 @@ extern uint16_t* fbp;
 extern struct fb_copyarea rect;
 extern int fbfd;
 
-struct Game_frontscreen{ 
+
+struct Game_frontpage{
 	int id;
 	int items;
 	int position;
@@ -33,27 +34,40 @@ struct Game_frontscreen{
 		int length;
 		int status;
 		int order;
-	} links[3];
+	}links[3];
 };
+
 struct screens{
 	int id_current_screen;
 	int change;
 	bool exit;
 };
-
-struct Game_screen{
+struct Game_play{
+	int id;
+	int player_score;
+	char player_score_string[3];
+	int num_of_pillars;
+	struct pillar{
+		int x_position; //leftmost edge of the pillar(towards the player)
+		int y_gap_center; //gap between the top and the bottom of the opening between pillars
+		int gave_score;
+	} pillars[3];
+};
+struct Player{
+	int position;
+	int velocity;
+	int boost;
+	int tick_since_action;
+};
+struct Game_highscore{
+	int id;
+	struct highscores{
+		char player_score_string[3];
+	} highscore[5];
+};
+struct Game_over{
 	int id;
 };
-
-struct Game_character{
-	int x;
-	int y;
-	int last_y;
-	int width;
-	int height;
-	int velocity;
+struct Game_exit{
+	int pressed;
 };
-
-
-
-
