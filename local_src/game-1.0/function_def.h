@@ -1,29 +1,24 @@
-#include <stdint.h> 
-#include <sys/stat.h> 
+#include <stdint.h>
+#include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/ioctl.h> 
-#include <signal.h> 
-#include <unistd.h> 
-#include <stdlib.h> 
+#include <sys/ioctl.h>
+#include <signal.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 /*Function declarations*/
 void display_char(int, int, unsigned char, int);
 void display_string(int, int, char [], int,int);
 void update_screen(int, int, int, int);
-void draw_item(int, int, int, int, uint8_t*);
-void erase_item(int, int, int ,int ,int);
-
 
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 240
 
 extern uint16_t* fbp;
-extern struct fb_copyarea rect;
 
-struct Game_frontscreen{ 
+struct Game_frontpage{
 	int id;
 	int items;
-	int position;
 	struct menulink{
 		int x;
 		int y;
@@ -32,24 +27,32 @@ struct Game_frontscreen{
 		int status;
 		int order;
 	} links[3];
-};
-struct screens{
-	int id_current_page;
-};
-
+}; 
 struct Game_screen{
+	int id_current_page;
+	int position;
+};
+struct Game_play{
 	int id;
+	int player_score;
+	int num_of_pillars;
+	struct pillar{
+		int x_position; //leftmost edge of the pillar(towards the player)
+		int y_gap_center; //gap between the top and the bottom of the opening between pillars
+	} pillars[3];
 };
-
-struct Game_character{
-	int x;
-	int y;
-	int last_y;
-	int width;
-	int height;
+struct Player{
+	int position;
 	int velocity;
+	int boost;
+	int gravity;
+	int tick_since_action;
 };
+struct Game_highscore{
+	int id;
 
-
-
-
+};
+struct Game_exit{
+	int id;
+	int pressed;
+};
