@@ -1,12 +1,16 @@
+#include <stdio.h> //printf
 #include <sys/mman.h>
 #include <sys/ioctl.h> 
 #include <sys/stat.h> 
 #include <sys/types.h>
+#include <linux/fb.h> //framebuffer
+
 
 #include "font8x8.h"
 #include "function_def.h"
 #include "colors.h"
 
+struct fb_copyarea rect; 		//Defines the area that is updated in the framebuffer
 
 void update_screen(int x, int y, int width, int height){
 	rect.dx = x;
@@ -19,14 +23,19 @@ void update_screen(int x, int y, int width, int height){
 
 void draw_item(int x, int y, int width, int height, uint8_t* pixel_map)
 {
-	int color = GREEN;
+	printf("draw_item()\n");
+	// int color = GREEN;
+	uint16_t color = 0x001F;
 	if(pixel_map == NULL)
 	{
-		for(int row_y; row_y < height; row_y++)
-			for(int col_x; col_x < width; col_x++)
-				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = color;
+		printf("Drawing box\n");
+		for(int row_y=0; row_y < height; row_y++){
+			for(int col_x=0; col_x < width; col_x++)
+				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = 0xFFFF;
+		}
 	}
 	else{
+		printf("You're on the wrong side of town cowboy\n");
 		//insert pixel map function here
 		// very similar to previous, but will draw
 		// what is sent through the pixel map
@@ -34,15 +43,16 @@ void draw_item(int x, int y, int width, int height, uint8_t* pixel_map)
 	}
 	update_screen(x, y, width, height);
 }
-void erase_item(int x, int y, int width, int height,int fill_color)
+void erase_item(int x, int y, int width, int height,uint16_t fill_color)
 {
-	for(int row_y; row_y < height; row_y++)
-			for(int col_x; col_x < width; col_x++)
-				fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = fill_color;
+	for(int row_y=0; row_y < height; row_y++){
+		for(int col_x=0; col_x < width; col_x++)
+			fbp[(x+col_x)+(y+row_y)*SCREEN_WIDTH] = fill_color;
+	}
 	update_screen(x, y, width, height);
 }
 
-void display_char(int x, int y, unsigned char ch, int color)
+void display_char(int x, int y, unsigned char ch, uint16_t color)
 {
 	for(int i = 0; i < 8; i++)
 	{
@@ -56,7 +66,7 @@ void display_char(int x, int y, unsigned char ch, int color)
 	}
 }
 
-void display_string(int x, int y, char string[],int length,int color)
+void display_string(int x, int y, char string[], int length, uint16_t color)
 {
 	/*
 		Loops through all chars in the input strings

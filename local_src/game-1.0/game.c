@@ -12,6 +12,7 @@
 #include <signal.h> 
 #include <stdlib.h> 
 #include <string.h>
+#include <math.h>
 
 #include "colors.h"
 #include "function_def.h"
@@ -27,11 +28,10 @@
 
 /*Framebuffer variables*/
 int fbfd; 						//File open
-struct fb_copyarea rect; 		//Defines the area that is updated in the framebuffer
 struct fb_var_screeninfo vinfo; //Can receive info about the screen - resolution
 uint16_t* fbp; 					//Memory mapping - 16 bits per pixel on the screen
 struct Game_character square_box;
-
+int framebuffer_size;
 
 
 enum direction{UP,DOWN,RIGHT,LEFT} dir;
@@ -43,6 +43,7 @@ int gpio; //File open
 struct Game_frontscreen frontscreen = {
 	 FRONTPAGE,
 	 3, //number of links on the frontscreen
+	 0,
 	{
 		{SCREEN_WIDTH/2 - 8/2*8, SCREEN_HEIGHT/3+00, "New Game",8*8,SELECTED, 0},
 		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+10, "Highscores",10*8, NOT_SELECTED,1},
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]){
 	fbfd = open("/dev/fb0",O_RDWR); //Open framebuffer driver
 	ioctl(fbfd,FBIOGET_VSCREENINFO, &vinfo); //Get information about screen
 
-	int framebuffer_size = vinfo.xres*vinfo.yres;//vinfo.smem_len; //Size of the framebuffer
+	framebuffer_size = vinfo.xres*vinfo.yres;//vinfo.smem_len; //Size of the framebuffer
 	fbp = mmap(NULL, framebuffer_size, PROT_READ | PROT_WRITE,MAP_SHARED, fbfd, 0);
 
 	//Set white background
@@ -83,7 +84,8 @@ int main(int argc, char *argv[]){
 	printf("Start screen\n");
 	// start_screen();
 	start_game();
-	while(1);
+	// draw_item(50, 50, 10,10,NULL);
+
 	//Unmap and close file
 	close(gpio);
 	munmap(fbp, framebuffer_size);
@@ -170,7 +172,7 @@ void sigio_handler(int no){
 				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
 			}
 		}
-	}else if(curr_screen.id == GAMEPAGE)
+	}else if(curr_screen.id_current_screen == GAMEPAGE)
 	{
 		square_box.velocity = 5;
 	}
@@ -192,14 +194,18 @@ void start_screen(){
 }
 
 
-void play_game(){
+void start_game(){
 
 	//Init functions
-
+	printf("Start game\n");
+	curr_screen.id_current_screen = GAMEPAGE;
 	// remove everything on the screen
+	int background_color = BLACK;
+	printf("updating screen\n");
 	for(int i = 0; i < framebuffer_size; i++)
-		fbp[i] = BLACK;
-
+		fbp[i] = background_color;
+	update_screen(0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
+	printf("SCreen updated\n");
 	//initialize main character
 	square_box.x = SCREEN_WIDTH/2-10/2;
 	square_box.y = SCREEN_HEIGHT/2-10/2;
@@ -207,30 +213,33 @@ void play_game(){
 	square_box.width = 10;
 	square_box.height = 10;
 	square_box.velocity = -5;
+	printf("initialized box struct\n");
 
 	int acceleration = -1;
-	int refrash_rate_us = 10000000;
-	int refrash_rate_s = refrash_rate_us/1000000;
-	int new_y_pos;
-
+	int refrash_rate_us = 500000;
+	int refrash_rate_s = 1;//refrash_rate_us/1000000;
+	int new_posy;
+	printf("Drawing player\n");
 	draw_item(square_box.x, square_box.y, square_box.width, square_box.height, NULL);
 
+	printf("Start loop\n");
 	// start game loop
 	while(1)
 	{
 		usleep(refrash_rate_us);// pause for x microseconds
 		//update position
 		square_box.last_y = square_box.y;
-		new_y_pos = square_box.y - square_box.velocity*refrash_rate_s;
-		if(new_y_pos+square_box.height <= SCREEN_HEIGHT)
-			square_box.y =  new_y_pos;
+		new_posy = square_box.y - square_box.velocity*refrash_rate_s;
+		printf("last posy %i\nnewposy %i\n", square_box.y, new_posy);
+		if(new_posy+square_box.height <= SCREEN_HEIGHT && new_posy > 0)
+			square_box.y =  new_posy;
 		//update velocity
 		if(square_box.velocity > -5)
-			square_box.velocity = square_box.velocity - acceleration*(refrash_rate_s)
+			square_box.velocity = square_box.velocity + acceleration*(refrash_rate_s);
 		// check collisions
-
+		printf("velocity %i\n", square_box.velocity);
 		//update screen by erasing last position and drawing new
-		erase_item(square_box.x, square_box.last_y, square_box.width, square_box.height, NULL);
+		erase_item(square_box.x, square_box.last_y, square_box.width, square_box.height, background_color);
 		draw_item(square_box.x, square_box.y, square_box.width, square_box.height, NULL);
 	}
 }

@@ -7,11 +7,11 @@
 #include <stdlib.h> 
 
 /*Function declarations*/
-void display_char(int, int, unsigned char, int);
-void display_string(int, int, char [], int,int);
+void display_char(int, int, unsigned char, uint16_t);
+void display_string(int, int, char [], int,uint16_t);
 void update_screen(int, int, int, int);
 void draw_item(int, int, int, int, uint8_t*);
-void erase_item(int, int, int ,int ,int);
+void erase_item(int, int, int ,int ,uint16_t);
 
 
 #define SCREEN_WIDTH  320
@@ -19,6 +19,7 @@ void erase_item(int, int, int ,int ,int);
 
 extern uint16_t* fbp;
 extern struct fb_copyarea rect;
+extern int fbfd;
 
 struct Game_frontscreen{ 
 	int id;
@@ -34,7 +35,7 @@ struct Game_frontscreen{
 	} links[3];
 };
 struct screens{
-	int id_current_page;
+	int id_current_screen;
 };
 
 struct Game_screen{
