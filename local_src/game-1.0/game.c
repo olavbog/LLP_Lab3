@@ -28,11 +28,13 @@
 // Defines for player
 #define PLAYER_GRAVITY 1
 #define STARTPOSITION 80 // height the bird will spawn at
+#define BIRDSIZE 16
 
 // Defines for pillars
 #define PILLAR_WIDTH 30
 #define DISTANCE_BETWEEN_PILLARS 117 //lowest distance for 3 pillars
 #define PILLAR_GAP 50
+#define PILLAR_SPEED 2
 
 /*Framebuffer variables*/
 int fbfd; 						//File open
@@ -73,7 +75,6 @@ struct Player player = {
 			STARTPOSITION,
 			0, // player's velocity
 			0, // player's boost
-			PLAYER_GRAVITY,
 			0, // game ticks since last button push
 };
 struct Game_highscore game_screen;
@@ -117,24 +118,26 @@ int main(int argc, char *argv[]){
 	srand(time(NULL)); // Init of random gen for pillar generate
 	while(1){
 
-		if(game_screen.id_current_page = game_play.id){ // is the game running?
+		if(game_screen.id_current_page == game_play.id){ // is the game running?
 			// #TODO
 			//  - add game-tick timer(https://developer.ibm.com/tutorials/l-timers-list/)
 			//  - reset game-tick timer
+			update_pillar();
 			update_bird();
-			// 	- update/generate pillars
-			//  - check for collision
-			//  - check if score should be updated
+			if (collision() != 0){ // check for collision. if not, update score
+				game_screen.id_current_page = game_over.id;
+			}
+			display_score();
 			// wait for game-tick timer wakeup, can use delay until timer is implemented
-		} else if(game_screen.id_current_page = game_over.id) { // game over, freeze screen
+		} else if(game_screen.id_current_page == game_over.id) { // game over, freeze screen
 			// #TODO:
 			// - Write "Game Over" in the middle of the screen
-			// - wait for button input. back to main menu or restart game(?)
+			save_score();
+			// - wait for button input. back to main menu
 		}
 		if(Game_exit.pressed){ // Exit has been pressed on main menu
 			break; // Break ininite while loop
 		};
-
 	};
 
 	//Unmap and close file
@@ -144,6 +147,42 @@ int main(int argc, char *argv[]){
 	exit(EXIT_SUCCESS);
 	return 0;
 }
+
+void save_score()
+{
+
+}
+
+void display_score()
+{
+	display_string(SCREEN_WIDTH-40, 10, Game_play.player_score_string , 3*8, WHITE);
+}
+
+int collision()
+{
+	if(player.position < BIRDSIZE/2 || player.position > SCREEN_HEIGHT-BIRDSIZE/2){ // Top and bottom of screen
+		return -1;
+	}
+	for(int i = 0;i<game_play.num_of_pillars;i++){
+		if (game_play.pillar[i].x_position < (SCREEN_WIDTH/4)+BIRDSIZE/2 && game_play.pillar[i].x_position > (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH) {
+			if(player.position < game_play.pillar[i].y_gap_center - PILLAR_GAP/2 || player.position > game_play.pillar[i].y_gap_center + PILLAR_GAP/2){
+				return -1;
+			}
+		}
+		// check if score should be updated
+		if ((game_play.pillar[i].x_position) < (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH){
+			if(game_play.pillar[i].gave_score == 0){
+				game_play.pillar[i].gave_score = 1;
+				game_play.player_score += 1;
+				game_play.player_score_string[0] = game_play.player_score % 10;
+				game_play.player_score_string[1] = (game_play.player_score % 100)/10;
+				game_play.player_score_string[2] = game_play.player_score/100;
+			}
+		}
+	}
+	return 0; // collision did not occur.
+}
+
 void init_pillar()
 {
 	spawn_pillar(0, PILLAR_WIDTH+SCREEN_WIDTH);
@@ -155,29 +194,39 @@ void spawn_pillar(int pillarnr, int x_position)
 {
 	game_play.pillars[pillarnr].x_position = x_position;
 	game_play.pillars[pillarnr].y_gap_center = rand() % (SCREEN_HEIGHT-2*PILLAR_GAP) + PILLAR_GAP;
-
+	game_play.pillar[pillarnr].gave_score = 0;
 }
 
-void move_pillars()
+void update_pillar()
 {
 	for(int i = 0;i<game_play.num_of_pillars;i++){
-		if (game_play.pillars[i].x_position == -PILLAR_WIDTH+1){
+		if (game_play.pillars[i].x_position == -PILLAR_WIDTH){
 			spawn_pillar(i, num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
 	  }else {
-			game_play.pillars[i].x_position -= 1;
+			game_play.pillars[i].x_position -= PILLAR_SPEED;
 		}
 		if(game_play.pillars[i].x_position < SCREEN_WIDTH){
+			remove_pillar(i);
 			draw_pillar(i);
 		}
+	}
+}
 
+void remove_pillar(int i){
+	if(game_play.pillars[i].x_position < SCREEN_WIDTH-PILLAR_WIDTH){
+		draw_rect(game_play.pillars[i].x_position+PILLAR_WIDTH, 0, PILLAR_SPEED, 2*SCREEN_HEIGHT/3, BLUE);
+		draw_rect(game_play.pillars[i].x_position+PILLAR_WIDTH, 2*SCREEN_HEIGHT/3, PILLAR_SPEED, SCREEN_HEIGHT/3, GREEN);
 	}
 }
 
 void draw_pillar(int i)
 {
-
-
+	if(game_play.pillars[i].x_position >= 0){ //dont draw outside left edge
+		draw_rect(game_play.pillars[i].x_position, 0, PILLAR_SPEED, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, YELLOW);
+		draw_rect(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2 , PILLAR_SPEED, SCREEN_HEIGHT-game_play.pillars[i].y_gap_center+PILLAR_GAP/2, YELLOW);
+	}
 }
+
 void update_screen(int x, int y, int width, int height)
 {
 	rect.dx = x;
@@ -210,7 +259,6 @@ int init_gpio()
 	printf("Driver initialize success\n");
 	return 0;
 }
-
 
 void sigio_handler(int no)
 {
@@ -247,6 +295,8 @@ void sigio_handler(int no)
 			switch(game_screen.position){
 					case 0: // new game
 						spawn_map();
+						game_play.player_score = 0;
+						game_play.player_score_string = "000";
 						game_screen.id_current_page = game_play.id;
 						break;
 					case 1: // high score
@@ -330,30 +380,29 @@ void update_bird()
 
 void update_velocity()
 {
-	player.velocity = player.boost - player.gravity * player.tick_since_action;
+	player.velocity = player.boost - PLAYER_GRAVITY * player.tick_since_action;
 	player.tick_since_action += 1;
 }
 
 void draw_bird(int position)
 {
-	draw_rect(SCREEN_WIDTH/4, position-birdsize/2, birdsize, birdsize, BLACK;
+	draw_rect(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLACK;
 }
 
 
 void remove_bird(int position)
 {
-	int birdsize = 16
 	int birdsize_in_blue = 0; // If the first if-sentence fails the whole background should be green
 	//need to remove old bird
-	if((position-birdsize/2) < 2*SCREEN_HEIGHT/3){
-		draw_rect(SCREEN_WIDTH/4, position-birdsize/2, birdsize, birdsize, BLUE);
+	if((position-BIRDSIZE/2) < 2*SCREEN_HEIGHT/3){
+		draw_rect(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLUE);
 
-		if (2*SCREEN_HEIGHT/3 - position-birdsize/2) < 16){ // check if some of the box is over the line between blue and green
-			birdsize_in_blue = 2*SCREEN_HEIGHT/3 - position-birdsize/2;
+		if (2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2) < 16){ // check if some of the box is over the line between blue and green
+			birdsize_in_blue = 2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2;
 		}
 	}
-	if((position+birdsize/2) > 2*SCREEN_HEIGHT/3){
-		draw_rect(SCREEN_WIDTH/4, position+birdsize/2, birdsize, birdsize-birdsize_in_blue, GREEN);
+	if((position+BIRDSIZE/2) > 2*SCREEN_HEIGHT/3){
+		draw_rect(SCREEN_WIDTH/4, position+BIRDSIZE/2, BIRDSIZE, BIRDSIZE-birdsize_in_blue, GREEN);
 	}
 }
 
