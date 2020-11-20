@@ -4,7 +4,7 @@
 #include <linux/fb.h> //framebuffer
 //declares uintx_t
 #include <sys/mman.h> // adds mmap and ioctl functions
-#include <unistd.h>  //adds close()
+#include <unistd.h>  //adds close() and usleep()
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -24,6 +24,8 @@
 #define FRONTPAGE 0
 #define PLAYPAGE 1
 #define SCOREPAGE 2
+#define GAMEOVERPAGE 3
+#define GAME_TICK_TIME 200000
 
 // Defines for player
 #define PLAYER_GRAVITY 1
@@ -65,20 +67,26 @@ struct Game_play game_play = {
 		0, // player's score
 		3, // number of pillars
 	 {
-	//{x_position, y_gap_center, on_screen, in_range_of_player}
-		{x_position, y_gap_center, on_screen, NOT_SELECTED} // pillar 1
-		{x_position, y_gap_center, on_screen, NOT_SELECTED} // pillar 2
-		{x_position, y_gap_center, on_screen, NOT_SELECTED} // pillar 3
+	//{x_position, y_gap_center, gave_score}
+		{x_position, y_gap_center, NOT_SELECTED}, // pillar 1
+		{x_position, y_gap_center, NOT_SELECTED}, // pillar 2
+		{x_position, y_gap_center, NOT_SELECTED}, // pillar 3
 	 }
 };
 struct Player player = {
 			STARTPOSITION,
 			0, // player's velocity
-			0, // player's boost
+			10, // player's boost
 			0, // game ticks since last button push
 };
-struct Game_highscore game_screen;
-struct Game_exit game_screen;
+struct Game_highscore game_highscore = {
+		SCOREPAGE,
+		{
+			{"000"}, {"000"}, {"000"}, {"000"}, {"000"},
+		}
+};
+struct Game_over game_over = { GAMEOVERPAGE, };
+struct Game_exit game_exit = { 0, }
 
 
 /*Function declarations*/
@@ -92,6 +100,13 @@ void spawn_map();
 void update_bird();
 void update_velocity();
 void remove_bird(int);
+void display_score();
+void collision();
+void init_pillar();
+void spawn_pillar();
+void update_pillar();
+void remove_pillar(int);
+void draw_pillar(int);
 
 
 /*----------------------------------------------------------------------*/
@@ -117,23 +132,24 @@ int main(int argc, char *argv[]){
 	start_screen();
 	srand(time(NULL)); // Init of random gen for pillar generate
 	while(1){
-
 		if(game_screen.id_current_page == game_play.id){ // is the game running?
-			// #TODO
-			//  - add game-tick timer(https://developer.ibm.com/tutorials/l-timers-list/)
-			//  - reset game-tick timer
+			//  - add game-tick timer(https://developer.ibm.com/tutorials/l-timers-list/)?
+			usleep(GAME_TICK_TIME);
 			update_pillar();
 			update_bird();
 			if (collision() != 0){ // check for collision. if not, update score
+				//save_score();
 				game_screen.id_current_page = game_over.id;
 			}
 			display_score();
 			// wait for game-tick timer wakeup, can use delay until timer is implemented
 		} else if(game_screen.id_current_page == game_over.id) { // game over, freeze screen
-			// #TODO:
-			// - Write "Game Over" in the middle of the screen
-			save_score();
-			// - wait for button input. back to main menu
+			// Write "Game Over" in the middle of the screen
+			display_string(SCREEN_WIDTH/2 - 9/2*8, SCREEN_HEIGHT/3+10, "Game Over", 9*8, WHITE);
+			// wait for button input. If pushed go back to main menu
+			while(game_screen.id_current_page == game_over.id);
+			printf("Start screen\n");
+			start_screen();
 		}
 		if(Game_exit.pressed){ // Exit has been pressed on main menu
 			break; // Break ininite while loop
@@ -148,9 +164,12 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void save_score()
-{
+//void save_score()
+//{
+//	for(int i = 0;i<5;i++){
 
+
+	}
 }
 
 void display_score()
@@ -177,6 +196,7 @@ int collision()
 				game_play.player_score_string[0] = game_play.player_score % 10;
 				game_play.player_score_string[1] = (game_play.player_score % 100)/10;
 				game_play.player_score_string[2] = game_play.player_score/100;
+				printf("Score updated\n");
 			}
 		}
 	}
@@ -303,7 +323,7 @@ void sigio_handler(int no)
 						game_highscore.id_current_page = 2;
 						break;
 					case 2: // exit game
-						Game_exit.pressed = 1;
+						Game_exit.pressed = SELECTED;
 						break;
 			}
 		}
@@ -334,10 +354,12 @@ void sigio_handler(int no)
 	} else if(game_screen.id_current_page == game_play.id){ //game is running
 		if(dir == ACTION){
 			if(player.velocity < 0){
-				player.tick_since_action;
+				player.tick_since_action = 0;
 			}
 
 		}
+	} else if(game_screen.id_current_page == game_over.id){
+		game_screen.id_current_page =  page_front.id;
 	}
 
 	// printf("gp status: %x \n",(unsigned int)gamepad_status&0xFF);

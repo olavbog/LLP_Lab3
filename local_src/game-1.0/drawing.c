@@ -1,11 +1,11 @@
 // Some drawing function i made for the fun of it
-void draw_rect(int x, int y, int width, int height){
+void draw_rect(int x, int y, int width, int height, uint16_t color){
 
 	for(int row = y; row < height+y; row++)
 	{
 		for(int column = x; column < x+width; column++)
 		{
-			fbp[column + row*320]=0xFFFF;
+			fbp[column + row*320]=color;
 		}
 	}
 	ioctl(fbfd, 0x4680, &rect);
