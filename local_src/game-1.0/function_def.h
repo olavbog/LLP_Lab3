@@ -55,7 +55,7 @@ struct Game_highscore{
 		char player_score_string[3];
 	} highscore[5];
 };
-struct game_over{
+struct Game_over{
 	int id;
 };
 struct Game_exit{

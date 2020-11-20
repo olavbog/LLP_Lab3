@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "colors.h"
 #include "function_def.h"
@@ -63,14 +64,14 @@ struct Game_screen game_screen;
 
 struct Game_play game_play = {
 		PLAYPAGE, //ID
-		STARTPOSITION, // Player start-hight on screen
 		0, // player's score
+		"000",
 		3, // number of pillars
 	 {
 	//{x_position, y_gap_center, gave_score}
-		{x_position, y_gap_center, NOT_SELECTED}, // pillar 1
-		{x_position, y_gap_center, NOT_SELECTED}, // pillar 2
-		{x_position, y_gap_center, NOT_SELECTED}, // pillar 3
+		{0, 0, NOT_SELECTED}, // pillar 1
+		{0, 0, NOT_SELECTED}, // pillar 2
+		{0, 0, NOT_SELECTED}, // pillar 3
 	 }
 };
 struct Player player = {
@@ -86,7 +87,7 @@ struct Game_highscore game_highscore = {
 		}
 };
 struct Game_over game_over = { GAMEOVERPAGE, };
-struct Game_exit game_exit = { 0, }
+struct Game_exit game_exit = { 0, };
 
 
 /*Function declarations*/
@@ -97,16 +98,18 @@ void start_screen();
 void selected_background(int,int,int,int);
 void update_screen(int, int, int, int);
 void spawn_map();
+void draw_bird(int);
 void update_bird();
 void update_velocity();
 void remove_bird(int);
 void display_score();
-void collision();
+int collision();
 void init_pillar();
 void spawn_pillar();
 void update_pillar();
 void remove_pillar(int);
 void draw_pillar(int);
+void draw_rect(int, int, int, int, uint16_t);
 
 
 /*----------------------------------------------------------------------*/
@@ -151,7 +154,7 @@ int main(int argc, char *argv[]){
 			printf("Start screen\n");
 			start_screen();
 		}
-		if(Game_exit.pressed){ // Exit has been pressed on main menu
+		if(game_exit.pressed){ // Exit has been pressed on main menu
 			break; // Break ininite while loop
 		};
 	};
@@ -169,12 +172,12 @@ int main(int argc, char *argv[]){
 //	for(int i = 0;i<5;i++){
 
 
-	}
-}
+//	}
+//}
 
 void display_score()
 {
-	display_string(SCREEN_WIDTH-40, 10, Game_play.player_score_string , 3*8, WHITE);
+	display_string(SCREEN_WIDTH-40, 10, game_play.player_score_string , 3*8, WHITE);
 }
 
 int collision()
@@ -183,15 +186,15 @@ int collision()
 		return -1;
 	}
 	for(int i = 0;i<game_play.num_of_pillars;i++){
-		if (game_play.pillar[i].x_position < (SCREEN_WIDTH/4)+BIRDSIZE/2 && game_play.pillar[i].x_position > (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH) {
-			if(player.position < game_play.pillar[i].y_gap_center - PILLAR_GAP/2 || player.position > game_play.pillar[i].y_gap_center + PILLAR_GAP/2){
+		if (game_play.pillars[i].x_position < (SCREEN_WIDTH/4)+BIRDSIZE/2 && game_play.pillars[i].x_position > (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH) {
+			if(player.position < game_play.pillars[i].y_gap_center - PILLAR_GAP/2 || player.position > game_play.pillars[i].y_gap_center + PILLAR_GAP/2){
 				return -1;
 			}
 		}
 		// check if score should be updated
-		if ((game_play.pillar[i].x_position) < (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH){
-			if(game_play.pillar[i].gave_score == 0){
-				game_play.pillar[i].gave_score = 1;
+		if ((game_play.pillars[i].x_position) < (SCREEN_WIDTH/4)-(BIRDSIZE/2)-PILLAR_WIDTH){
+			if(game_play.pillars[i].gave_score == 0){
+				game_play.pillars[i].gave_score = 1;
 				game_play.player_score += 1;
 				game_play.player_score_string[0] = game_play.player_score % 10;
 				game_play.player_score_string[1] = (game_play.player_score % 100)/10;
@@ -214,14 +217,14 @@ void spawn_pillar(int pillarnr, int x_position)
 {
 	game_play.pillars[pillarnr].x_position = x_position;
 	game_play.pillars[pillarnr].y_gap_center = rand() % (SCREEN_HEIGHT-2*PILLAR_GAP) + PILLAR_GAP;
-	game_play.pillar[pillarnr].gave_score = 0;
+	game_play.pillars[pillarnr].gave_score = 0;
 }
 
 void update_pillar()
 {
 	for(int i = 0;i<game_play.num_of_pillars;i++){
 		if (game_play.pillars[i].x_position == -PILLAR_WIDTH){
-			spawn_pillar(i, num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
+			spawn_pillar(i, game_play.num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
 	  }else {
 			game_play.pillars[i].x_position -= PILLAR_SPEED;
 		}
@@ -316,14 +319,17 @@ void sigio_handler(int no)
 					case 0: // new game
 						spawn_map();
 						game_play.player_score = 0;
-						game_play.player_score_string = "000";
+						//game_play.player_score_string[0] = '0';
+						//game_play.player_score_string[1] = '0';
+						//game_play.player_score_string[2] = '0';
+						memset(&game_play.player_score_string[0], 0, sizeof(game_play.player_score_string));
 						game_screen.id_current_page = game_play.id;
 						break;
 					case 1: // high score
-						game_highscore.id_current_page = 2;
+						game_screen.id_current_page = game_highscore.id;
 						break;
 					case 2: // exit game
-						Game_exit.pressed = SELECTED;
+						game_exit.pressed = SELECTED;
 						break;
 			}
 		}
@@ -381,9 +387,9 @@ void start_screen()
 
 void spawn_map()
 { // Set initial background in preperation for game start.
-	for(int i = 0; i < (2*framebuffer_size/3)-1; i++)
+	for(int i = 0; i < (2*vinfo.xres*vinfo.yres/3)-1; i++)
 		fbp[i] = BLUE; // Blue for sky
-	for(int i = 2*framebuffer_size/3; i < framebuffer_size; i++)
+	for(int i = 2*vinfo.xres*vinfo.yres/3; i < vinfo.xres*vinfo.yres; i++)
 		fbp[i] = GREEN; // Green for grass
 	draw_bird(player.position);
 
@@ -408,7 +414,7 @@ void update_velocity()
 
 void draw_bird(int position)
 {
-	draw_rect(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLACK;
+	draw_rect(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLACK);
 }
 
 
@@ -419,7 +425,7 @@ void remove_bird(int position)
 	if((position-BIRDSIZE/2) < 2*SCREEN_HEIGHT/3){
 		draw_rect(SCREEN_WIDTH/4, position-BIRDSIZE/2, BIRDSIZE, BIRDSIZE, BLUE);
 
-		if (2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2) < 16){ // check if some of the box is over the line between blue and green
+		if ((2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2) < 16){ // check if some of the box is over the line between blue and green
 			birdsize_in_blue = 2*SCREEN_HEIGHT/3 - position-BIRDSIZE/2;
 		}
 	}
@@ -448,4 +454,17 @@ void selected_background(int x,int y,int width, int status)
 		}
 	}
 	update_screen(x, y, width, height);
+}
+
+void draw_rect(int x, int y, int width, int height, uint16_t color){
+
+	for(int row = y; row < height+y; row++)
+	{
+		for(int column = x; column < x+width; column++)
+		{
+			fbp[column + row*320]=color;
+		}
+	}
+	ioctl(fbfd, 0x4680, &rect);
+	printf("Drew rect");
 }
