@@ -157,7 +157,7 @@ int main(int argc, char *argv[]){
 			update_bird();
 			if (collision() != 0){ // check for collision. if not, update score
 				//save_score();
-				printf("Collision detected\n");
+				// printf("Collision detected\n");
 				curr_screen.id_current_screen = GAMEOVERSCREEN;
 			}
 			display_score();
@@ -210,7 +210,7 @@ int collision()
 		1. Collision with frame of screen
 		2. Collision with pillars
 	*/
-	printf("Checking collision \n");
+	// printf("Checking collision \n");
 	if(player.position-BIRDSIZE/2 < 0 || player.position+BIRDSIZE/2 > SCREEN_HEIGHT){ // Top and bottom of screen
 
 		return -1;
@@ -502,12 +502,16 @@ void start_screen()
 		Initialize start screen.
 		Display the strings and backgrounds.
 	*/
-	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FRONTSCREEN_BACKGROUND_COLOR, NULL, false);
+	printf("Start screen");
+	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FRONTSCREEN_BACKGROUND_COLOR, NULL, true);
 	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "Flappy dog", 10, WHITE, false);
 	for(int i = 0; i < frontscreen.items; i++){
 		display_string(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].string,frontscreen.links[i].length, WHITE, false);
 		selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status, false);
 	}
+	// selected_background(frontscreen.links[0].x,frontscreen.links[0].y,frontscreen.links[0].length,1, false);
+	// selected_background(frontscreen.links[1].x,frontscreen.links[1].y,frontscreen.links[1].length,1, false);
+	// selected_background(frontscreen.links[2].x,frontscreen.links[2].y,frontscreen.links[2].length,1, false);
 	update_screen(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	curr_screen.id_current_screen = FRONTSCREEN;
 	curr_screen.exit = false;
@@ -590,23 +594,28 @@ void remove_bird(int pos_y)
 }
 
 
-void selected_background(int x,int y,int width, int status, bool update)
+void selected_background(int x, int y, int width, int status, bool update)
 {
 	/*
 		Change background of a box without affecting the text that is there
 		THis is to "select" hgihlight text in the main menu
 	*/
 	int height = 8;
-	int start_xy = x+(y-1)*SCREEN_HEIGHT;
-	int stop_xy = (x+width) + (y+height+2)*SCREEN_WIDTH;
 	int font_color = WHITE;
+	int selected_bkground;
+	if(status == 1)
+		selected_bkground = GRAY;
+	else
+		selected_bkground = FRONTSCREEN_BACKGROUND_COLOR;
+	// int selected_bkground = (status == 1)? GRAY : FRONTSCREEN_BACKGROUND_COLOR;
 
-	int selected_bkground = (status == 1)? GRAY : FRONTSCREEN_BACKGROUND_COLOR;
-
-	for(int i = start_xy; i < stop_xy; i++){
-		if(fbp[i] != font_color)
-			fbp[i] = selected_bkground;
+	for(int row_y = y; row_y < height+y; row_y++){
+		for(int col_x = x; col_x < width*8+x; col_x++){
+			if(fbp[col_x+row_y*SCREEN_WIDTH] != font_color)
+				fbp[col_x+row_y*SCREEN_WIDTH] = selected_bkground;
+		}
 	}
+
 	if(update)
-		update_screen(x, y, width, height);
+		update_screen(x, y, width*8, height+1);
 }
