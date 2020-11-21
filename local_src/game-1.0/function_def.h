@@ -9,10 +9,10 @@
 
 /*Function declarations*/
 void display_char(int, int, unsigned char, uint16_t);
-void display_string(int, int, char [], int,uint16_t);
+void display_string(int, int, char [], int, uint16_t, bool);
 void update_screen(int, int, int, int);
-void draw_item(int, int, int, int, uint16_t, uint8_t*);
-void erase_item(int, int, int ,int ,uint16_t);
+void draw_item(int, int, int, int, uint16_t, uint8_t*, bool);
+void erase_item(int, int, int ,int ,uint16_t, bool);
 
 
 #define SCREEN_WIDTH  320
@@ -49,6 +49,7 @@ struct Game_play{
 	int num_of_pillars;
 	struct pillar{
 		int x_position; //leftmost edge of the pillar(towards the player)
+		int x_position_last;
 		int y_gap_center; //gap between the top and the bottom of the opening between pillars
 		int width;
 		int gave_score;

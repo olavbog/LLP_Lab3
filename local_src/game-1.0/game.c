@@ -31,7 +31,7 @@
 #define EXITGAME 3
 #define GAMEOVERSCREEN 4
 
-#define GAME_TICK_TIME 100000
+#define GAME_TICK_TIME 20000
 #define FRONTSCREEN_BACKGROUND_COLOR BLACK
 
 // Defines for player
@@ -45,8 +45,8 @@
 
 // Defines for pillars
 #define PILLAR_WIDTH 30
-#define DISTANCE_BETWEEN_PILLARS 117 //lowest distance for 3 pillars
-#define PILLAR_GAP 50
+#define DISTANCE_BETWEEN_PILLARS 180 //lowest distance for 3 pillars - 117
+#define PILLAR_GAP 90
 #define PILLAR_SPEED 2
 
 /*Framebuffer variables*/
@@ -54,7 +54,7 @@ int fbfd; 						//File open
 struct fb_var_screeninfo vinfo; //Can receive info about the screen - resolution
 uint16_t* fbp; 					//Memory mapping - 16 bits per pixel on the screen
 
-// struct Game_character square_box;
+
 int resolution;
 
 
@@ -70,9 +70,9 @@ struct Game_frontscreen frontscreen = {
 	 3, //number of links on the frontscreen
 	 0,
 	{
-		{SCREEN_WIDTH/2 - 8/2*8 , SCREEN_HEIGHT/3+00, "New Game",   8*8, SELECTED,    0},
-		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+10, "Highscores",10*8, NOT_SELECTED,1},
-		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+20, "Exit Game",  9*8, NOT_SELECTED,2},
+		{SCREEN_WIDTH/2 - 8/2*8 , SCREEN_HEIGHT/3+00, "New Game",   8, SELECTED,    0},
+		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+10, "Highscores",10, NOT_SELECTED,1},
+		{SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3+20, "Exit Game",  9, NOT_SELECTED,2},
 	}
 };
 struct screens curr_screen;
@@ -84,9 +84,9 @@ struct Game_play game_play = {
 		3, // number of pillars
 	 {
 	//{x_position, y_gap_center, gave_score}
-		{0, 0, NOT_SELECTED}, // pillar 1
-		{0, 0, NOT_SELECTED}, // pillar 2
-		{0, 0, NOT_SELECTED}, // pillar 3
+		{0, 0, 0, NOT_SELECTED}, // pillar 1
+		{0, 0, 0, NOT_SELECTED}, // pillar 2
+		{0, 0, 0, NOT_SELECTED}, // pillar 3
 	 }
 };
 struct Player player = {
@@ -110,7 +110,7 @@ struct Game_over game_over = { GAMEOVERSCREEN };
 int init_gpio();
 void sigio_handler(int);
 void start_screen();
-void selected_background(int,int,int,int);
+void selected_background(int,int,int,int,bool);
 
 void spawn_map();
 void draw_bird(int);
@@ -140,8 +140,8 @@ int main(int argc, char *argv[]){
 	init_gpio();
 
 	//Set background and title
-	draw_item(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, NULL);
-	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "Flappy dog",13, WHITE);
+	// draw_item(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, NULL, true);
+	// usleep(5);
 
 
 	srand(time(0)); // Init of random gen for pillar generate
@@ -165,8 +165,8 @@ int main(int argc, char *argv[]){
 			// Write "Game Over" in the middle of the screen
 			printf("current screen is GAMEOVERSCREEN\n");
 			
-			display_string(SCREEN_WIDTH/2 - 9/2*8, SCREEN_HEIGHT/3+10, "Game Over", 9, WHITE);
-			display_string(SCREEN_WIDTH/2 - 27*8/2, SCREEN_HEIGHT/3+20, "Push any button to continue", 27, WHITE);
+			display_string(SCREEN_WIDTH/2 - 9/2*8, SCREEN_HEIGHT/3+10, "Game Over", 9, WHITE, true);
+			display_string(SCREEN_WIDTH/2 - 27*8/2, SCREEN_HEIGHT/3+20, "Push any button to continue", 27, WHITE, true);
 			usleep(10);
 			// reset to initial 
 			player.position = STARTPOSITION;
@@ -178,10 +178,10 @@ int main(int argc, char *argv[]){
 		}
 	};
 	printf("Exiting");
-	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, NULL);
-	display_string(SCREEN_WIDTH/2 - 3*8, SCREEN_HEIGHT/3, "Bye Bye", 7, WHITE);// Lets draw something cool on exit
+	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK, NULL, true);
+	display_string(SCREEN_WIDTH/2 - 3*8, SCREEN_HEIGHT/3, "Bye Bye", 7, WHITE, true);// Lets draw something cool on exit
 
-	//Unmap and close file
+	// //Unmap and close file
 	close(gpio);
 	munmap(fbp, resolution);
 	close(fbfd);
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]){
 
 void display_score()
 {
-	display_string(SCREEN_WIDTH-40, 10, game_play.player_score_string , 3*8, BLACK);
+	display_string(SCREEN_WIDTH-40, 10, game_play.player_score_string , 3*8, BLACK, true);
 }
 
 int collision()
@@ -259,7 +259,8 @@ void spawn_pillar(int pillarnr, int pos_x)
 	/*
 		Set position and randomize gap of the pillars
 	*/
-	game_play.pillars[pillarnr].x_position   = pos_x;
+	game_play.pillars[pillarnr].x_position        = pos_x;
+	game_play.pillars[pillarnr].x_position_last   = pos_x;
 	game_play.pillars[pillarnr].y_gap_center = rand() % (SCREEN_HEIGHT - 2*PILLAR_GAP) + PILLAR_GAP/2;
 	game_play.pillars[pillarnr].gave_score   = 0;
 }
@@ -273,6 +274,7 @@ void update_pillar()
 	*/
 	for(int i = 0; i < game_play.num_of_pillars; i++){
 		remove_pillar(i);
+		game_play.pillars[i].x_position_last = game_play.pillars[i].x_position;
 		game_play.pillars[i].x_position -= PILLAR_SPEED;
 
 		//if pillar is outside of the screen, set position to right side and randomize gap
@@ -292,11 +294,23 @@ void remove_pillar(int i){
 		//Pillar is on the screen
 		if(on_screen > PILLAR_WIDTH){
 			//Entire pillar is on the screen
-			on_screen = PILLAR_WIDTH;
+			if(game_play.pillars[i].x_position < 0)
+				on_screen = PILLAR_WIDTH + game_play.pillars[i].x_position;
+			else
+				on_screen = PILLAR_WIDTH;
 		}
 		//Need to fix background colors
-		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, BLUE, NULL);
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center+PILLAR_GAP/2, GREEN, NULL);
+		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, BLUE, NULL, false);
+		// usleep(1);
+
+		
+		int blue = 0;
+		if(game_play.pillars[i].y_gap_center+PILLAR_GAP/2 > SCREENBORDER)
+			blue = game_play.pillars[i].y_gap_center + PILLAR_GAP/2 - SCREENBORDER;
+
+		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2-blue, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center+PILLAR_GAP/2 - blue, GREEN, NULL, false);
+		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, blue, BLUE, NULL, false);
+		// update_screen(game_play.pillars[i].x_position, 0, on_screen, SCREEN_HEIGHT);
 	}
 }
 
@@ -311,8 +325,10 @@ void draw_pillar(int i)
 			//Entire pillar is on the screen
 			on_screen = PILLAR_WIDTH;
 		}
-		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL);
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center+PILLAR_GAP/2, WHITE, NULL);
+		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL, false);
+		// usleep(1);
+		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center + PILLAR_GAP/2, WHITE, NULL, false);
+		update_screen(game_play.pillars[i].x_position, 0, on_screen - game_play.pillars[i].x_position + game_play.pillars[i].x_position_last, SCREEN_HEIGHT);
 	}
 }
 
@@ -393,8 +409,9 @@ void sigio_handler(int no)
 				Enter the screen of he link pushed.
 				Game screen, highscore, or exit the game
 			*/
+			printf("Trying to enter a screen\n");
 			switch(frontscreen.position){
-				case GAMESCREEN:
+				case 0:
 					spawn_map();
 					game_play.player_score = 0;
 					//game_play.player_score_string[0] = '0';
@@ -402,11 +419,14 @@ void sigio_handler(int no)
 					//game_play.player_score_string[2] = '0';
 					memset(&game_play.player_score_string[0], 0, sizeof(game_play.player_score_string));
 					curr_screen.id_current_screen = GAMESCREEN;
+					printf("Should've entered game now\n");
 					break;
-				case SCORESCREEN:
+				case 1:
+					printf("Trying to enter scorescreen\n");
 					// curr_screen.id_current_screen = SCORESCREEN;
 					break;
-				case EXITGAME:
+				case 2:
+					printf("Trying to exit\n");
 					curr_screen.exit = true;
 					break;
 			}
@@ -430,7 +450,7 @@ void sigio_handler(int no)
 			frontscreen.links[frontscreen.position].status = SELECTED;
 		
 			for(int i = 0;i<frontscreen.items;i++)
-				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
+				selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status, true);
 
 			usleep(10);
 			return;
@@ -466,11 +486,13 @@ void start_screen()
 		Initialize start screen.
 		Display the strings and backgrounds.
 	*/
-	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FRONTSCREEN_BACKGROUND_COLOR, NULL);
+	draw_item(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, FRONTSCREEN_BACKGROUND_COLOR, NULL, false);
+	display_string(SCREEN_WIDTH/2 -(13*8)/2, 1, "Flappy dog", 10, WHITE, false);
 	for(int i = 0; i < frontscreen.items; i++){
-		display_string(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].string,frontscreen.links[i].length, WHITE);
-		selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status);
+		display_string(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].string,frontscreen.links[i].length, WHITE, false);
+		selected_background(frontscreen.links[i].x,frontscreen.links[i].y,frontscreen.links[i].length,frontscreen.links[i].status, false);
 	}
+	update_screen(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	curr_screen.id_current_screen = FRONTSCREEN;
 	curr_screen.exit = false;
 	frontscreen.position = 0;
@@ -483,8 +505,10 @@ void spawn_map()
 		Initialize pillars
 		Draw player
 	*/
-	draw_item(0, 0, SCREEN_WIDTH, SCREENBORDER, BLUE, NULL);
-	draw_item(0, SCREENBORDER, SCREEN_WIDTH, SCREEN_HEIGHT - SCREENBORDER, GREEN, NULL);
+	printf("Spawn map??\n");
+	draw_item(0, 0, SCREEN_WIDTH, SCREENBORDER, BLUE, NULL, false);
+	draw_item(0, SCREENBORDER, SCREEN_WIDTH, SCREEN_HEIGHT - SCREENBORDER, GREEN, NULL, false);
+	update_screen(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	init_pillar();
 	draw_bird(player.position);
@@ -510,11 +534,11 @@ void draw_bird(int pos_y)
 {	
 	// Check if the bird is going outside of the bounds
 	if(pos_y - BIRDHEIGHT / 2 < 0)
-		draw_item(BIRDPOSX, 0, BIRDWIDTH, BIRDHEIGHT/2 + pos_y, BLACK, NULL);
+		draw_item(BIRDPOSX, 0, BIRDWIDTH, BIRDHEIGHT/2 + pos_y, BLACK, NULL, true);
 	else if(pos_y + BIRDHEIGHT / 2 > SCREEN_HEIGHT)
-		draw_item(BIRDPOSX, pos_y - BIRDHEIGHT / 2, BIRDWIDTH, BIRDHEIGHT/2 - (pos_y - SCREEN_HEIGHT), BLACK, NULL);
+		draw_item(BIRDPOSX, pos_y - BIRDHEIGHT / 2, BIRDWIDTH, BIRDHEIGHT/2 - (pos_y - SCREEN_HEIGHT), BLACK, NULL, true);
 	else
-		draw_item(BIRDPOSX, pos_y - BIRDHEIGHT/2, BIRDWIDTH, BIRDHEIGHT, BLACK, NULL);
+		draw_item(BIRDPOSX, pos_y - BIRDHEIGHT/2, BIRDWIDTH, BIRDHEIGHT, BLACK, NULL, true);
 }
 
 
@@ -542,15 +566,15 @@ void remove_bird(int pos_y)
 		pos_y_grass = pos_y + bird_in_sky;
 	}
 	if(bird_on_grass > 0)
-		draw_item(BIRDPOSX, pos_y_grass, BIRDWIDTH, bird_on_grass, GREEN, NULL);
+		draw_item(BIRDPOSX, pos_y_grass, BIRDWIDTH, bird_on_grass, GREEN, NULL, true);
 
 	if(bird_in_sky > 0)
-		draw_item(BIRDPOSX, pos_y, BIRDWIDTH, bird_in_sky, BLUE, NULL);
+		draw_item(BIRDPOSX, pos_y, BIRDWIDTH, bird_in_sky, BLUE, NULL, true);
 
 }
 
 
-void selected_background(int x,int y,int width, int status)
+void selected_background(int x,int y,int width, int status, bool update)
 {
 	/*
 		Change background of a box without affecting the text that is there
@@ -561,11 +585,12 @@ void selected_background(int x,int y,int width, int status)
 	int stop_xy = (x+width) + (y+height+2)*SCREEN_WIDTH;
 	int font_color = WHITE;
 
-	int selected_background = (status == 1)? GRAY : FRONTSCREEN_BACKGROUND_COLOR;
+	int selected_bkground = (status == 1)? GRAY : FRONTSCREEN_BACKGROUND_COLOR;
 
 	for(int i = start_xy; i < stop_xy; i++){
 		if(fbp[i] != font_color)
-			fbp[i] = selected_background;
+			fbp[i] = selected_bkground;
 	}
-	update_screen(x, y, width, height);
+	if(update)
+		update_screen(x, y, width, height);
 }

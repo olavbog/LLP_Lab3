@@ -27,7 +27,7 @@ void update_screen(int x, int y, int width, int height){
 }
 
 
-void draw_item(int x, int y, int width, int height, uint16_t color, uint8_t* pixel_map)
+void draw_item(int x, int y, int width, int height, uint16_t color, uint8_t* pixel_map, bool update)
 {
 	/*Can draw any item
       For a simple box just add coordinates, width, height, color, and set pixel map to NULL
@@ -49,9 +49,10 @@ void draw_item(int x, int y, int width, int height, uint16_t color, uint8_t* pix
 		// what is sent through the pixel map
 		// pointer
 	}
-	update_screen(x, y, width, height);
+	if(update)
+		update_screen(x, y, width, height);
 }
-void erase_item(int x, int y, int width, int height,uint16_t fill_color)
+void erase_item(int x, int y, int width, int height,uint16_t fill_color, bool update)
 {
 	/*
 		Delete the item at an area by setting it to the background. 
@@ -62,7 +63,8 @@ void erase_item(int x, int y, int width, int height,uint16_t fill_color)
 		for(int col_x=x; col_x < width+x; col_x++)
 			fbp[col_x + row_y*SCREEN_WIDTH] = fill_color;
 	}
-	update_screen(x, y, width, height);
+	if(update)
+		update_screen(x, y, width, height);
 }
 
 void display_char(int x, int y, unsigned char ch, uint16_t color)
@@ -80,7 +82,7 @@ void display_char(int x, int y, unsigned char ch, uint16_t color)
 	}
 }
 
-void display_string(int x, int y, char string[], int length, uint16_t color)
+void display_string(int x, int y, char string[], int length, uint16_t color, bool update)
 {
 	/*
 		Loops through all chars in the input strings
@@ -102,6 +104,7 @@ void display_string(int x, int y, char string[], int length, uint16_t color)
 		display_char(x+(i*8),y, string[i],color); 
 	}
 	//Update area of the text in the framebuffer
-	update_screen(x,y,8*i,10);
+	if(update)
+		update_screen(x,y,8*i,10);
 }
 
