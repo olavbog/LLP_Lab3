@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <math.h>
 
 #include <stdbool.h> // includes bool
 
@@ -259,8 +260,8 @@ void spawn_pillar(int pillarnr, int pos_x)
 	/*
 		Set position and randomize gap of the pillars
 	*/
-	game_play.pillars[pillarnr].x_position        = pos_x;
-	game_play.pillars[pillarnr].x_position_last   = pos_x;
+	game_play.pillars[pillarnr].x_position = pos_x;
+	game_play.pillars[pillarnr].deltax     = 0;
 	game_play.pillars[pillarnr].y_gap_center = rand() % (SCREEN_HEIGHT - 2*PILLAR_GAP) + PILLAR_GAP/2;
 	game_play.pillars[pillarnr].gave_score   = 0;
 }
@@ -274,7 +275,7 @@ void update_pillar()
 	*/
 	for(int i = 0; i < game_play.num_of_pillars; i++){
 		remove_pillar(i);
-		game_play.pillars[i].x_position_last = game_play.pillars[i].x_position;
+		game_play.pillars[i].deltax = PILLAR_SPEED;
 		game_play.pillars[i].x_position -= PILLAR_SPEED;
 
 		//if pillar is outside of the screen, set position to right side and randomize gap
@@ -288,47 +289,62 @@ void update_pillar()
 void remove_pillar(int i){
 
 	//How much of the pillar is on screen
-	int on_screen = SCREEN_WIDTH - game_play.pillars[i].x_position; 
+	int on_screen;
+	int xpos;
 
-	if(on_screen > 0 ){
-		//Pillar is on the screen
-		if(on_screen > PILLAR_WIDTH){
-			//Entire pillar is on the screen
-			if(game_play.pillars[i].x_position < 0)
-				on_screen = PILLAR_WIDTH + game_play.pillars[i].x_position;
-			else
-				on_screen = PILLAR_WIDTH;
-		}
-		//Need to fix background colors
-		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, BLUE, NULL, false);
-		// usleep(1);
-
-		
-		int blue = 0;
-		if(game_play.pillars[i].y_gap_center+PILLAR_GAP/2 > SCREENBORDER)
-			blue = game_play.pillars[i].y_gap_center + PILLAR_GAP/2 - SCREENBORDER;
-
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2-blue, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center+PILLAR_GAP/2 - blue, GREEN, NULL, false);
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, blue, BLUE, NULL, false);
-		// update_screen(game_play.pillars[i].x_position, 0, on_screen, SCREEN_HEIGHT);
+	if(game_play.pillars[i].x_position < 0){
+		on_screen = PILLAR_WIDTH - abs(game_play.pillars[i].x_position); 
+		xpos = 0;
+	}else{
+		on_screen = SCREEN_WIDTH - game_play.pillars[i].x_position; 
+		xpos = game_play.pillars[i].x_position;	
 	}
-}
-
-void draw_pillar(int i)
-{	
-	//How much of the pillar is on screen
-	int on_screen = SCREEN_WIDTH - game_play.pillars[i].x_position; 
-
 	if(on_screen > 0 ){
 		//Pillar is on the screen
 		if(on_screen > PILLAR_WIDTH){
 			//Entire pillar is on the screen
 			on_screen = PILLAR_WIDTH;
 		}
-		draw_item(game_play.pillars[i].x_position, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL, false);
-		// usleep(1);
-		draw_item(game_play.pillars[i].x_position, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center + PILLAR_GAP/2, WHITE, NULL, false);
-		update_screen(game_play.pillars[i].x_position, 0, on_screen - game_play.pillars[i].x_position + game_play.pillars[i].x_position_last, SCREEN_HEIGHT);
+		//remove uppermost pillar. Replace with blue
+		draw_item(xpos, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, BLUE, NULL, false);
+
+
+		int blue_y =  game_play.pillars[i].y_gap_center+PILLAR_GAP/2;
+		int blue_height = SCREENBORDER - blue_y;
+		if(blue_height < 0)
+			blue_height = 0;
+		int green_y = blue_y + blue_height;
+		int green_height = SCREEN_HEIGHT - green_y;
+
+		draw_item(xpos, blue_y, on_screen, blue_height, BLUE, NULL, false);
+		draw_item(xpos, green_y, on_screen, green_height, GREEN, NULL, false);
+		
+		update_screen(xpos, 0, on_screen + game_play.pillars[i].deltax, SCREEN_HEIGHT);
+	}
+}
+
+void draw_pillar(int i)
+{	
+	//How much of the pillar is on screen
+	int on_screen;
+	int xpos;
+
+	if(game_play.pillars[i].x_position < 0){
+		on_screen = PILLAR_WIDTH - abs(game_play.pillars[i].x_position); 
+		xpos = 0;
+	}else{
+		on_screen = SCREEN_WIDTH - game_play.pillars[i].x_position; 
+		xpos = game_play.pillars[i].x_position;	
+	}
+	if(on_screen > 0 ){
+		//Pillar is on the screen
+		if(on_screen > PILLAR_WIDTH){
+			//Entire pillar is on the screen
+			on_screen = PILLAR_WIDTH;
+		}
+		draw_item(xpos, 0, on_screen, game_play.pillars[i].y_gap_center-PILLAR_GAP/2, WHITE, NULL, false);
+		draw_item(xpos, game_play.pillars[i].y_gap_center+PILLAR_GAP/2, on_screen, SCREEN_HEIGHT - game_play.pillars[i].y_gap_center + PILLAR_GAP/2, WHITE, NULL, false);
+		update_screen(xpos, 0, on_screen + game_play.pillars[i].deltax, SCREEN_HEIGHT);
 	}
 }
 

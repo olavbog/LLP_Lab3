@@ -49,7 +49,7 @@ struct Game_play{
 	int num_of_pillars;
 	struct pillar{
 		int x_position; //leftmost edge of the pillar(towards the player)
-		int x_position_last;
+		int deltax;
 		int y_gap_center; //gap between the top and the bottom of the opening between pillars
 		int width;
 		int gave_score;
