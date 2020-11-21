@@ -90,10 +90,10 @@ struct Player player = {
 			0, // game ticks since last button push
 };
 struct Game_highscore game_highscore = {
-		SCORESCREEN,
-		{
-			{"000"}, {"000"}, {"000"}, {"000"}, {"000"},
-		}
+	SCORESCREEN,
+ 	{
+		{0,"000"}, {0,"000"}, {0,"000"}, {0,"000"}, {0,"000"},
+	}
 };
 struct Game_over game_over = { GAMEOVERSCREEN };
 // struct Game_exit game_exit = { 0, };
@@ -114,6 +114,8 @@ void update_bird();
 void update_velocity();
 void remove_bird(int);
 void display_score();
+void score_screen();
+void save_score();
 int collision();
 void init_pillar();
 void spawn_pillar();
@@ -180,6 +182,11 @@ int main(int argc, char *argv[]){
 			while(curr_screen.id_current_screen == GAMEOVERSCREEN)
 				usleep(10); //small delayed needed for the variable to be able to change
 			start_screen();
+		} else if(curr_screen.id_current_screen == SCORESCREEN) {
+			score_screen();
+			while(curr_screen.id_current_screen == SCORESCREEN)
+				usleep(10); //small delayed needed for the variable to be able to change
+			start_screen();
 		}
 		// if(game_exit.pressed){ // Exit has been pressed on main menu
 		// 	break; // Break ininite while loop
@@ -202,6 +209,31 @@ int main(int argc, char *argv[]){
 
 //	}
 //}
+
+void score_screen()
+{
+	draw_item(0,0,vinfo.xres,vinfo.yres,BLACK,NULL); // Clean screen
+	display_string(SCREEN_WIDTH/2 - 10/2*8, SCREEN_HEIGHT/3-10,"Highscores",10, WHITE);
+	for(int i = 0;i<5;i++){ 
+		display_string(SCREEN_WIDTH/2 - 12, SCREEN_HEIGHT/3+10*i,game_highscore.highscore[i].player_score_string,3, WHITE);
+	}
+	display_string(SCREEN_WIDTH/2 - 26*8/2, SCREEN_HEIGHT/3+60, "Push any button to go back", 26, WHITE);
+}
+
+void save_score()
+{
+	for(int i = 0;i<5;i++){
+		if (game_play.player_score > game_highscore.highscore[i].player_score_int){ //check each highscore entry if new score is higher
+			for(int j = 0;j<4-i;j++){ // If new highscore is found, move [3] to [4], [2] to [3],etc to make space for new entry
+				game_highscore.highscore[4-j].player_score_int = game_highscore.highscore[3-j].player_score_int;
+				game_highscore.highscore[4-j].player_score_string = game_highscore.highscore[3-j].player_score_string;
+			}
+			game_highscore.highscore[i].player_score_int = game_play.player_score; //write new highscore entry
+			game_highscore.highscore[i].player_score_string = game_play.player_score_string;
+			return;
+		}
+	}
+}
 
 void display_score()
 {
@@ -400,6 +432,8 @@ void sigio_handler(int no)
 			player.velocity = 7;
 		}
 	} else if(curr_screen.id_current_screen == GAMEOVERSCREEN){
+		curr_screen.id_current_screen = FRONTSCREEN;
+	} else if(curr_screen.id_current_screen == SCORESCREEN){
 		curr_screen.id_current_screen = FRONTSCREEN;
 	}
 	// printf("Finished sigio\n");
