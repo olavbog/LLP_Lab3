@@ -78,13 +78,13 @@ struct Game_play game_play = {
 		3, // number of pillars
 	 {
 	//{x_position, y_gap_center, gave_score}
-		{0, 0, NOT_SELECTED}, // pillar 1
+		{0, 0, NOT_SELECTED}, // pillar 1 //x pos is at leftmost edge
 		{0, 0, NOT_SELECTED}, // pillar 2
 		{0, 0, NOT_SELECTED}, // pillar 3
 	 }
 };
 struct Player player = {
-			STARTPOSITION,
+			STARTPOSITION, //y pos is at center of bird
 			0, // player's velocity
 			10, // player's boost
 			0, // game ticks since last button push
@@ -254,12 +254,12 @@ void spawn_pillar(int pillarnr, int pos_x)
 void update_pillar()
 {	
 	// for(int i = 0; i < game_play.num_of_pillars; i++){
-	// 	if (game_play.pillars[i].x_position == -PILLAR_WIDTH){
+	// 	if (game_play.pillars[i].x_position == -PILLAR_WIDTH){ //can end up in a position where this value is skipped(E.G going from -29 to -31). Should probably be changed to <=
 	// 		spawn_pillar(i, game_play.num_of_pillars*DISTANCE_BETWEEN_PILLARS-PILLAR_WIDTH);
 	//   	}else{
 	// 		game_play.pillars[i].x_position -= PILLAR_SPEED;
 	// 	}
-	// 	if(game_play.pillars[i].x_position < SCREEN_WIDTH){
+	// 	if(game_play.pillars[i].x_position < SCREEN_WIDTH){ // maybe use  <= SCREEN_WIDTH-PILLAR_SPEED. as it now might try to draw out of bounds E.G when position 319 it will try to draw on 320 also because of pillarspeed=2
 	// 		remove_pillar(i);
 	// 		draw_pillar(i);
 	// 	}
@@ -285,7 +285,7 @@ void draw_pillar(int i)
 {	
 	int remove_outside = 0;
 	int move_x = 0;
-	// if(game_play.pillars[i].x_position < SCREEN_WIDTH){ //dont draw outside left edge
+	// if(game_play.pillars[i].x_position < SCREEN_WIDTH){ //dont draw outside left edge 
 	// 	if(game_play.pillars[i].x_position<0){
 	// 		remove_outside = -game_play.pillars[i].x_position;
 	// 		move_x = -game_play.pillars[i].x_position;
@@ -394,7 +394,7 @@ void sigio_handler(int no)
 		}
 	} else if(curr_screen.id_current_screen == GAMESCREEN){ //game is running
 		if(dir == ACTION){
-			// if(player.velocity < 0){
+			// if(player.velocity < 0){ // The idea here was to prevent the player from spamming the jump button
 			// 	player.tick_since_action = 0;
 			// }
 			player.velocity = 7;
