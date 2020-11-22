@@ -127,6 +127,7 @@ static int __init gamepad_init(void){
 
 static void __exit gamepad_cleanup(void){
 	//Undo everything we did in init in reverse order
+	//Are we missing device_destroy(dev_ret something something)??
 	class_destroy(cl);
 	cdev_del(&c_dev);
 
